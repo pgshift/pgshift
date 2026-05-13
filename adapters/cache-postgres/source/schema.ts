@@ -39,6 +39,8 @@ export async function ensureView(
   name: string,
   config: CacheViewConfig,
 ): Promise<void> {
+  await ensureConfigTable(pool)
+
   const view = viewName(name)
 
   const existing = await pool.query<{ query: string }>(
@@ -46,9 +48,11 @@ export async function ensureView(
     [name],
   )
 
-  // Drop and recreate if query changed
-  if (existing[0] && existing[0].query !== config.query) {
-    await pool.query(`DROP MATERIALIZED VIEW IF EXISTS ${view}`)
+  // Drop if: query changed OR no config exists (view may be stale/orphaned)
+  const shouldDrop = !existing[0] || existing[0].query !== config.query
+
+  if (shouldDrop) {
+    await pool.query(`DROP MATERIALIZED VIEW IF EXISTS ${view} CASCADE`)
   }
 
   await pool.query(`
@@ -56,22 +60,19 @@ export async function ensureView(
     ${config.query}
   `)
 
-  // Unique index required for REFRESH CONCURRENTLY.
-  // The user must expose a unique column aliased as _pgshift_id in their query.
   await pool
-    .query(`
-    CREATE UNIQUE INDEX IF NOT EXISTS ${view}_idx ON ${view} (_pgshift_id)
-  `)
-    .catch(() => {
-      // _pgshift_id not present — REFRESH CONCURRENTLY unavailable, falls back to blocking
-    })
+    .query(
+      `CREATE UNIQUE INDEX IF NOT EXISTS ${view}_idx ON ${view} (_pgshift_id)`,
+    )
+    .catch(() => {})
 
   await pool.query(
     `INSERT INTO _pgshift_cache_config (name, query, refresh_every, last_refreshed)
      VALUES ($1, $2, $3, NOW())
      ON CONFLICT (name) DO UPDATE
-       SET query         = EXCLUDED.query,
-           refresh_every = EXCLUDED.refresh_every`,
+       SET query          = EXCLUDED.query,
+           refresh_every  = EXCLUDED.refresh_every,
+           last_refreshed = NOW()`,
     [name, config.query, config.refreshEvery ?? null],
   )
 }

@@ -75,6 +75,16 @@ export async function getEntityConfig(
   pool: PgPool,
   entity: string,
 ): Promise<{ config: SearchIndexConfig; language: string }> {
+  // Ensure config table exists before querying
+  await pool.query(`
+    CREATE TABLE IF NOT EXISTS _pgshift_search_config (
+      entity     TEXT        PRIMARY KEY,
+      config     JSONB       NOT NULL,
+      language   TEXT        NOT NULL DEFAULT 'english',
+      created_at TIMESTAMPTZ NOT NULL DEFAULT NOW()
+    )
+  `)
+
   const rows = await pool.query<{
     config: SearchIndexConfig
     language: string
