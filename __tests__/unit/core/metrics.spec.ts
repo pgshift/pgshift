@@ -212,6 +212,71 @@ describe('MetricsCollector', () => {
     })
   })
 
+  describe('vector migration hint', () => {
+    it('fires a hint when avg vector latency exceeds 500ms over 100 queries', () => {
+      const onHint = vi.fn()
+      const collector = new MetricsCollector(onHint)
+
+      for (let i = 0; i < 100; i++) {
+        collector.record(makeSnapshot('vector', 800))
+      }
+
+      expect(onHint).toHaveBeenCalledOnce()
+      expect(onHint).toHaveBeenCalledWith(
+        expect.objectContaining({
+          module: 'vector',
+          suggestedAdapter: 'pinecone',
+        }),
+      )
+    })
+
+    it('does not fire a hint when avg vector latency is below 500ms', () => {
+      const onHint = vi.fn()
+      const collector = new MetricsCollector(onHint)
+
+      for (let i = 0; i < 100; i++) {
+        collector.record(makeSnapshot('vector', 300))
+      }
+
+      expect(onHint).not.toHaveBeenCalled()
+    })
+
+    it('fires the vector hint only once per session', () => {
+      const onHint = vi.fn()
+      const collector = new MetricsCollector(onHint)
+
+      for (let i = 0; i < 200; i++) {
+        collector.record(makeSnapshot('vector', 800))
+      }
+
+      expect(onHint).toHaveBeenCalledOnce()
+    })
+
+    it('includes an urgency score between 0 and 1', () => {
+      const onHint = vi.fn()
+      const collector = new MetricsCollector(onHint)
+
+      for (let i = 0; i < 100; i++) {
+        collector.record(makeSnapshot('vector', 2000))
+      }
+
+      const hint = onHint.mock.calls[0]![0]
+      expect(hint.urgency).toBeGreaterThan(0)
+      expect(hint.urgency).toBeLessThanOrEqual(1)
+    })
+
+    it('includes a learnMoreUrl', () => {
+      const onHint = vi.fn()
+      const collector = new MetricsCollector(onHint)
+
+      for (let i = 0; i < 100; i++) {
+        collector.record(makeSnapshot('vector', 800))
+      }
+
+      expect(onHint.mock.calls[0]![0].learnMoreUrl).toBeDefined()
+    })
+  })
+
   describe('hint isolation', () => {
     it('fires hints independently for search, cache, and queue', () => {
       const onHint = vi.fn()
