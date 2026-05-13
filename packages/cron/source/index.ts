@@ -1,4 +1,5 @@
 import { createPostgresCronAdapter } from '@pgshift/adapter-cron-postgres'
+import { schedule } from './schedule.js'
 import type {
   CronJobInfo,
   CronJobOptions,
@@ -8,6 +9,8 @@ import type {
 import { PgShiftClient } from '@pgshift/core'
 
 export type { CronJobInfo, CronJobOptions } from '@pgshift/core'
+
+export { schedule }
 
 export interface CreateCronClientOptions {
   url: string
@@ -51,7 +54,7 @@ export interface CreateCronClientOptions {
 export function createClient(
   options: CreateCronClientOptions,
 ): PgShiftClient & {
-  cron: CronNamespace
+  cron: CronApi
 } {
   const config: PgShiftConfig = {
     url: options.url,
@@ -66,21 +69,43 @@ export function createClient(
     metrics: options.metrics,
     onMigrationHint: options.onMigrationHint,
     adapters: {},
-  }) as PgShiftClient & { cron: CronNamespace }
+  }) as PgShiftClient & { cron: CronApi }
 
-  client.cron = new CronNamespace(adapter)
+  client.cron = buildCronApi(adapter)
 
   return client
 }
 
 // ---------------------------------------------------------------------------
-// CronNamespace — fluent API
+// CronApi — callable function with namespace methods
 // ---------------------------------------------------------------------------
+
+type CronAdapter = ReturnType<typeof createPostgresCronAdapter>
+
+export type CronApi = {
+  (name: string): CronHandle
+  setup(): Promise<void>
+  list(): Promise<CronJobInfo[]>
+}
+
+function buildCronApi(adapter: CronAdapter): CronApi {
+  return Object.assign(
+    (name: string): CronHandle => new CronHandle(name, adapter),
+    {
+      setup: async (): Promise<void> => {
+        await adapter.setup()
+      },
+      list: async (): Promise<CronJobInfo[]> => {
+        return await adapter.list()
+      },
+    },
+  )
+}
 
 class CronHandle {
   constructor(
     private readonly name: string,
-    private readonly adapter: ReturnType<typeof createPostgresCronAdapter>,
+    private readonly adapter: CronAdapter,
   ) {}
 
   async schedule(cronExpr: string, options: CronJobOptions): Promise<void> {
@@ -89,24 +114,5 @@ class CronHandle {
 
   async unschedule(): Promise<void> {
     return this.adapter.unschedule(this.name)
-  }
-}
-
-class CronNamespace {
-  constructor(
-    private readonly adapter: ReturnType<typeof createPostgresCronAdapter>,
-  ) {}
-
-  // db.cron('job-name') — returns a handle for a specific job
-  call(name: string): CronHandle {
-    return new CronHandle(name, this.adapter)
-  }
-
-  async setup(): Promise<void> {
-    return this.adapter.setup()
-  }
-
-  async list(): Promise<CronJobInfo[]> {
-    return this.adapter.list()
   }
 }
