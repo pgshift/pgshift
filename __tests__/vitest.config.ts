@@ -6,5 +6,9 @@ export default defineConfig({
     globalSetup: ['integration/setup/global.ts'],
     environment: 'node',
     testTimeout: 30_000,
+    isolate: false,
+    sequence: {
+      concurrent: false,
+    },
   },
 })
