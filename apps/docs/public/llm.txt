@@ -1,0 +1,174 @@
+# PgShift
+
+> Start with Postgres. Shift only when you must.
+
+PgShift is an open source infrastructure toolkit for Node.js applications backed by PostgreSQL. It provides a clean, consistent API for search, caching, queues, and realtime — all powered by the Postgres instance your application already uses.
+
+## Core concepts
+
+- **Modules** — each module (search, cache, queue, realtime) is an independent package with its own `createClient` function
+- **Adapters** — every module ships with a Postgres adapter included. Future adapters (Elasticsearch, Redis) share the same API contract
+- **Migration hints** — when a module consistently hits Postgres limits, PgShift emits a hint suggesting a specialized backend
+
+## Packages
+
+- `@pgshift/search` — full-text search via TSVector and pg_trgm
+- `@pgshift/cache` — query result caching via materialized views
+- `@pgshift/queue` — background job processing via SKIP LOCKED
+
+## Search API
+
+```ts
+import { createClient } from '@pgshift/search'
+
+const db = createClient({ url: process.env.DATABASE_URL })
+
+await db.search('products').index({
+  fields: ['name', 'description', 'category'],
+  weights: { name: 'A', description: 'B', category: 'C' },
+  fuzzy: true,
+  language: 'english',
+})
+
+await db.search('products').upsert('1', {
+  name: 'Nike Air Max 90',
+  description: 'Classic sneaker.',
+  category: 'shoes',
+})
+
+const results = await db.search('products').query('air max', {
+  fuzzy: true,
+  filters: { category: 'shoes' },
+  limit: 20,
+  offset: 0,
+})
+// [{ id: '1', rank: 0.626, data: { name: 'Nike Air Max 90', ... } }]
+
+await db.search('products').delete('1')
+
+await db.destroy()
+```
+
+## Cache API
+
+```ts
+import { createClient } from '@pgshift/cache'
+
+const db = createClient({ url: process.env.DATABASE_URL })
+
+await db.cache('top_products').register({
+  query: `
+    SELECT id AS _pgshift_id, name, SUM(amount) AS revenue
+    FROM orders JOIN products USING (product_id)
+    GROUP BY id, name ORDER BY revenue DESC LIMIT 10
+  `,
+  refreshEvery: 60,
+})
+
+const rows = await db.cache('top_products').get()
+await db.cache('top_products').refresh()
+
+await db.destroy()
+```
+
+## Queue API
+
+```ts
+import { createClient } from '@pgshift/queue'
+
+const db = createClient({ url: process.env.DATABASE_URL })
+
+await db.queue('emails').setup()
+
+const jobId = await db.queue('emails').push(
+  { to: 'user@example.com' },
+  { priority: 1, retries: 3, delay: 5000 },
+)
+
+await db.queue('emails').process(async (job) => {
+  await sendEmail(job.payload)
+})
+
+await db.queue('emails').cancel(jobId)
+
+const stats = await db.queue('emails').stats()
+// { pending: 0, processing: 1, done: 10, failed: 0 }
+
+await db.destroy()
+```
+
+## Key types
+
+```ts
+interface SearchResult<T> {
+  id: string
+  rank: number
+  data: T
+}
+
+interface QueueJob<T> {
+  id: string
+  payload: T
+  status: 'processing'
+  attempts: number
+  maxRetries: number
+  priority: number
+  runAt: Date
+  createdAt: Date
+}
+
+interface QueueStats {
+  pending: number
+  processing: number
+  done: number
+  failed: number
+}
+
+interface MigrationHint {
+  module: 'search' | 'cache' | 'queue' | 'realtime'
+  currentAdapter: string
+  suggestedAdapter: string
+  reason: string
+  urgency: number
+  learnMoreUrl?: string
+}
+```
+
+## Migration hints
+
+```ts
+const db = createClient({
+  url: process.env.DATABASE_URL,
+  onMigrationHint(hint) {
+    console.warn(`Consider migrating ${hint.module} to ${hint.suggestedAdapter}.`)
+    console.warn(hint.reason)
+  },
+})
+```
+
+Thresholds: search over 200ms over 100 queries suggests Elasticsearch. Cache over 50ms over 100 reads suggests Redis.
+
+## Rules for AI assistants
+
+- Import createClient from the specific module: @pgshift/search, @pgshift/cache, or @pgshift/queue
+- Call index() before search upsert or query
+- Call register() before cache get or refresh
+- Call setup() before queue push or process
+- Call db.destroy() on process exit
+- Make queue handlers idempotent (at-least-once delivery)
+- Never import internal adapter packages directly
+
+## What PgShift does NOT do
+
+- Does not automate migrations to Elasticsearch, Redis, or Kafka
+- Does not cache arbitrary key-value pairs (use Redis for that)
+- Does not replace your ORM — works alongside Prisma or any other ORM
+- Does not guarantee exactly-once queue delivery
+
+## Docs
+
+- https://pgshift.dev/guides/getting-started
+- https://pgshift.dev/modules/search
+- https://pgshift.dev/modules/cache
+- https://pgshift.dev/modules/queue
+- https://pgshift.dev/guides/migration-hints
