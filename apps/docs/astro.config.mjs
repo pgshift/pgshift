@@ -43,9 +43,18 @@ export default defineConfig({
         {
           label: 'Adapters',
           items: [
-            { label: 'search-postgres', slug: 'adapters/search-postgres' },
-            { label: 'cache-postgres', slug: 'adapters/cache-postgres' },
-            { label: 'queue-postgres', slug: 'adapters/queue-postgres' },
+            {
+              label: 'Search postgres adapter',
+              slug: 'adapters/search-postgres',
+            },
+            {
+              label: 'Cache postgres adapter',
+              slug: 'adapters/cache-postgres',
+            },
+            {
+              label: 'Queue postgres adapter',
+              slug: 'adapters/queue-postgres',
+            },
           ],
         },
         {
