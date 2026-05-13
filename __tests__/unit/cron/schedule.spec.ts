@@ -55,7 +55,9 @@ describe('schedule.weekly', () => {
   })
 
   it('accepts hour and minute', () => {
-    expect(schedule.weekly({ day: 'wednesday', hour: 9, minute: 15 })).toBe('15 9 * * 3')
+    expect(schedule.weekly({ day: 'wednesday', hour: 9, minute: 15 })).toBe(
+      '15 9 * * 3',
+    )
   })
 })
 
