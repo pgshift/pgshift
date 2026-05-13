@@ -23,7 +23,7 @@ export interface PgShiftConfig {
 // Metrics & migration hints
 // ---------------------------------------------------------------------------
 
-export type PgShiftModule = 'search' | 'cache' | 'queue'
+export type PgShiftModule = 'search' | 'cache' | 'queue' | 'cron'
 
 export type MetricUnit = 'ms' | 'count' | 'per_second' | 'bytes'
 

@@ -15,6 +15,7 @@ export class MetricsCollector {
     if (snapshot.module === 'search') this.evaluateSearch(snapshot)
     if (snapshot.module === 'cache') this.evaluateCache(snapshot)
     if (snapshot.module === 'queue') this.evaluateQueue(snapshot)
+    if (snapshot.module === 'cron') this.evaluateCron(snapshot)
   }
 
   private evaluateSearch(snapshot: MetricSnapshot): void {
@@ -77,6 +78,27 @@ export class MetricsCollector {
         reason: `Average job processing time is ${avg.toFixed(0)}ms over the last 100 jobs.`,
         urgency: Math.min((avg - 500) / 1500, 1),
         learnMoreUrl: 'https://pgshift.dev/docs/migrate/queue-to-bullmq',
+      })
+    }
+  }
+
+  private evaluateCron(snapshot: MetricSnapshot): void {
+    const key = `cron:${snapshot.adapter}:latency`
+    if (this.hintsFired.has(key)) return
+
+    const recent = this.recent('cron', 100)
+    if (recent.length < 100) return
+
+    const avg = recent.reduce((s, m) => s + m.value, 0) / recent.length
+    if (avg > 1000) {
+      this.hintsFired.add(key)
+      this.onHint?.({
+        module: 'cron',
+        currentAdapter: snapshot.adapter,
+        suggestedAdapter: 'temporal',
+        reason: `Average job scheduling latency is ${avg.toFixed(0)}ms over the last 100 jobs.`,
+        urgency: Math.min((avg - 1000) / 4000, 1),
+        learnMoreUrl: 'https://pgshift.dev/docs/migrate/cron-to-temporal',
       })
     }
   }
