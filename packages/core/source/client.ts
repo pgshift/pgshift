@@ -4,6 +4,10 @@ import type {
   CacheViewConfig,
   MigrationHint,
   PgShiftConfig,
+  QueueAdapter,
+  QueueJob,
+  QueueJobOptions,
+  QueueStats,
   SearchAdapter,
   SearchIndexConfig,
   SearchQueryOptions,
@@ -21,6 +25,7 @@ export interface PgShiftClientOptions {
   adapters?: {
     search?: () => SearchAdapter
     cache?: () => CacheAdapter
+    queue?: () => QueueAdapter
   }
 }
 
@@ -30,8 +35,11 @@ export class PgShiftClient {
 
   private _search = new Map<string, SearchHandle>()
   private _cache = new Map<string, CacheHandle>()
+  private _queue = new Map<string, QueueHandle>()
+
   private _searchAdapter: SearchAdapter | undefined
   private _cacheAdapter: CacheAdapter | undefined
+  private _queueAdapter: QueueAdapter | undefined
 
   constructor(opts: PgShiftClientOptions) {
     this.opts = opts
@@ -52,6 +60,20 @@ export class PgShiftClient {
     }
 
     return this._search.get(entity)!
+  }
+
+  // ---------------------------------------------------------------------------
+  // queue(name) — returns a QueueHandle for the given queue name
+  // ---------------------------------------------------------------------------
+  queue(name: string): QueueHandle {
+    if (!this._queue.has(name)) {
+      this._queue.set(
+        name,
+        new QueueHandle(name, this.getQueueAdapter(), this.metrics),
+      )
+    }
+
+    return this._queue.get(name)!
   }
 
   // ---------------------------------------------------------------------------
@@ -102,6 +124,21 @@ export class PgShiftClient {
     return this._cacheAdapter
   }
 
+  private getQueueAdapter(): QueueAdapter {
+    if (!this._queueAdapter) {
+      const factory = this.opts.adapters?.queue
+      if (!factory) {
+        throw new Error(
+          '[PgShift] No queue adapter configured. ' +
+            'Pass adapters.queue to createClient, or install @pgshift/queue.',
+        )
+      }
+      this._queueAdapter = factory()
+    }
+
+    return this._queueAdapter
+  }
+
   // ---------------------------------------------------------------------------
   // Teardown
   // ---------------------------------------------------------------------------
@@ -109,6 +146,7 @@ export class PgShiftClient {
   async destroy(): Promise<void> {
     await this._searchAdapter?.teardown?.()
     await this._cacheAdapter?.teardown?.()
+    await this._queueAdapter?.teardown?.()
   }
 }
 
@@ -152,6 +190,53 @@ class SearchHandle {
 
   async delete(id: string): Promise<void> {
     return this.adapter.delete(this.entity, id)
+  }
+}
+
+// ---------------------------------------------------------------------------
+// QueueHandle — fluent API per queue name
+// ---------------------------------------------------------------------------
+
+class QueueHandle {
+  constructor(
+    private readonly name: string,
+    private readonly adapter: QueueAdapter,
+    private readonly metrics: MetricsCollector | undefined,
+  ) {}
+
+  async setup(options?: QueueJobOptions): Promise<void> {
+    return this.adapter.ensureQueue(this.name, options)
+  }
+
+  async push<T = unknown>(
+    payload: T,
+    options?: QueueJobOptions,
+  ): Promise<string> {
+    return this.adapter.push<T>(this.name, payload, options)
+  }
+
+  async process<T = unknown>(
+    handler: (job: QueueJob<T>) => Promise<void>,
+  ): Promise<void> {
+    const start = Date.now()
+    await this.adapter.process<T>(this.name, handler)
+
+    this.metrics?.record({
+      module: 'queue',
+      adapter: this.adapter.name,
+      timestamp: new Date(),
+      value: Date.now() - start,
+      unit: 'ms',
+      meta: { name: this.name },
+    })
+  }
+
+  async cancel(jobId: string): Promise<void> {
+    return this.adapter.cancel(this.name, jobId)
+  }
+
+  async stats(): Promise<QueueStats> {
+    return this.adapter.stats(this.name)
   }
 }
 
