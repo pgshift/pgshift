@@ -25,6 +25,7 @@
     "format": "biome format --write ."
   },
   "dependencies": {
+    "@pgshift/adapter-search-postgres": "*",
     "@pgshift/core": "*"
   },
   "devDependencies": {

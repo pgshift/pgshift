@@ -1,8 +1,20 @@
 {
-  "name": "@pgshift/search-postgres",
+  "name": "@pgshift/adapter-search-postgres",
+  "description": "Internal PostgreSQL adapter for @pgshift/search.",
   "version": "0.0.0",
-  "private": true,
   "type": "module",
+  "main": "./dist/index.mjs",
+  "types": "./dist/index.d.mts",
+  "exports": {
+    ".": {
+      "import": "./dist/index.mjs",
+      "types": "./dist/index.d.mts"
+    }
+  },
+  "files": [
+    "README.md",
+    "dist"
+  ],
   "scripts": {
     "build": "tsdown",
     "format": "biome format --write ."
