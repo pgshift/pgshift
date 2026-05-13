@@ -18,6 +18,8 @@
   "devDependencies": {
     "@pgshift/lint": "*",
     "@pgshift/ts": "*",
+    "@types/dockerode": "4.0.1",
+    "dockerode": "5.0.0",
     "vitest": "4.1.6"
   }
 }
