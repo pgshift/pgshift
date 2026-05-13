@@ -1,0 +1,95 @@
+---
+title: Cache
+description: Query result caching via PostgreSQL materialized views.
+---
+
+import { Aside } from '@astrojs/starlight/components'
+
+Caches the result of expensive SQL queries using PostgreSQL materialized views. Reads are instant, no recalculation at query time.
+
+## Install
+
+```bash
+npm install @pgshift/cache
+```
+
+## Setup
+
+```ts
+import { createClient } from '@pgshift/cache'
+
+const db = createClient({ url: process.env.DATABASE_URL })
+```
+
+## API
+
+### `db.cache(name).register(config)`
+
+Creates a named materialized view backed by a SQL query. Idempotent, safe to call on every startup.
+
+```ts
+await db.cache('top_products').register({
+  query: `
+    SELECT
+      p.id           AS _pgshift_id,
+      p.name,
+      p.category,
+      COUNT(o.id)    AS order_count,
+      SUM(o.amount)  AS total_revenue
+    FROM products p
+    LEFT JOIN orders o ON o.product_id = p.id
+    GROUP BY p.id, p.name, p.category
+    ORDER BY total_revenue DESC NULLS LAST
+    LIMIT 100
+  `,
+  refreshEvery: 60,
+})
+```
+
+| Option | Type | Description |
+|---|---|---|
+| `query` | `string` | SQL query to materialize |
+| `refreshEvery` | `number` | Refresh interval in seconds |
+
+<Aside type="tip">
+Alias a unique column as `_pgshift_id` in your query to enable `REFRESH CONCURRENTLY`, which updates the view without blocking reads.
+</Aside>
+
+### `db.cache(name).get()`
+
+Returns all rows from the materialized view. Triggers a background refresh if the view is stale.
+
+```ts
+const products = await db.cache('top_products').get<{
+  name: string
+  total_revenue: number
+}>()
+```
+
+The read is instant regardless of how complex the underlying query is. If the view is stale, a non-blocking background refresh is triggered and the current cached data is returned.
+
+### `db.cache(name).refresh()`
+
+Manually triggers a blocking refresh. Use this when you need current data before reading.
+
+```ts
+await db.cache('top_products').refresh()
+```
+
+Useful after bulk imports or significant data changes.
+
+## When to use this module
+
+Materialized views are the right tool when:
+
+- You have expensive aggregation queries powering dashboards or reports
+- The data changes periodically but does not need to be real-time
+- You want faster reads without duplicating data in a separate service
+
+They are not a substitute for Redis. If you need to cache arbitrary objects by key with individual TTLs, Redis is the right tool for that use case.
+
+## Migration hints
+
+PgShift emits a migration hint when average read latency exceeds 50ms over 100 consecutive reads.
+
+See [Migration Hints](/guides/migration-hints) for details.

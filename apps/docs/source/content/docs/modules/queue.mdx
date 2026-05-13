@@ -1,0 +1,142 @@
+---
+title: Queue
+description: Background job processing via PostgreSQL SKIP LOCKED.
+---
+
+import { Aside } from '@astrojs/starlight/components'
+
+At-least-once background job processing using PostgreSQL's `SKIP LOCKED`. Includes retries, exponential backoff, priority ordering, and a dead letter queue.
+
+## Install
+
+```bash
+npm install @pgshift/queue
+```
+
+## Setup
+
+```ts
+import { createClient } from '@pgshift/queue'
+
+const db = createClient({ url: process.env.DATABASE_URL })
+```
+
+## API
+
+### `db.queue(name).setup()`
+
+Creates the queue table and indexes. Idempotent, safe to call on every startup.
+
+```ts
+await db.queue('emails').setup()
+```
+
+### `db.queue(name).push(payload, options?)`
+
+Inserts a job into the queue. Returns the job ID.
+
+```ts
+const jobId = await db.queue('emails').push(
+  { to: 'user@example.com', subject: 'Welcome' },
+  {
+    priority: 1,
+    retries: 3,
+    delay: 5000,
+  },
+)
+```
+
+| Option | Type | Default | Description |
+|---|---|---|---|
+| `priority` | `number` | `0` | Higher number = processed first |
+| `retries` | `number` | `3` | Max retry attempts before dead letter |
+| `delay` | `number` | `0` | Milliseconds before job becomes visible |
+
+### `db.queue(name).process(handler)`
+
+Starts a polling worker. The handler runs for each job.
+
+```ts
+await db.queue('emails').process(async (job) => {
+  await sendEmail(job.payload)
+})
+```
+
+The `job` object contains:
+
+```ts
+interface QueueJob<T> {
+  id: string
+  payload: T
+  status: 'processing'
+  attempts: number
+  maxRetries: number
+  priority: number
+  runAt: Date
+  createdAt: Date
+}
+```
+
+If the handler throws, the job is retried with exponential backoff. After exhausting all retries, the job moves to `failed` status.
+
+<Aside type="caution">
+At-least-once delivery means a job may be processed more than once in case of worker failure. Make your handlers idempotent.
+</Aside>
+
+### `db.queue(name).cancel(jobId)`
+
+Cancels a pending job. Has no effect on jobs that are already processing.
+
+```ts
+await db.queue('emails').cancel(jobId)
+```
+
+### `db.queue(name).stats()`
+
+Returns counts per status for the queue.
+
+```ts
+const stats = await db.queue('emails').stats()
+// { pending: 10, processing: 2, done: 847, failed: 1 }
+```
+
+## Retry behavior
+
+Failed jobs are retried with exponential backoff:
+
+| Attempt | Backoff |
+|---|---|
+| 1 | 2 seconds |
+| 2 | 4 seconds |
+| 3 | 8 seconds |
+| N | min(2^N seconds, 30 seconds) |
+
+After all retry attempts are exhausted, the job moves to `failed` status and is preserved in the queue table for inspection.
+
+## Dead letter queue
+
+Failed jobs are not deleted. Query them directly for debugging:
+
+```ts
+import { Pool } from 'pg'
+
+const pool = new Pool({ connectionString: process.env.DATABASE_URL })
+
+const { rows } = await pool.query(`
+  SELECT id, payload, attempts, error, failed_at
+  FROM _pgshift_queue_emails
+  WHERE status = 'failed'
+  ORDER BY failed_at DESC
+`)
+```
+
+## Graceful shutdown
+
+Call `db.destroy()` on process exit. The worker waits for all in-flight jobs to complete before shutting down.
+
+```ts
+process.on('SIGTERM', async () => {
+  await db.destroy()
+  process.exit(0)
+})
+```

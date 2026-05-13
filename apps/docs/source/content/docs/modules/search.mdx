@@ -1,0 +1,122 @@
+---
+title: Search
+description: Full-text search powered by PostgreSQL.
+---
+
+import { Aside } from '@astrojs/starlight/components'
+
+Full-text search via TSVector and TSQuery, with optional fuzzy matching via `pg_trgm`. No Elasticsearch cluster required.
+
+## Install
+
+```bash
+npm install @pgshift/search
+```
+
+## Setup
+
+```ts
+import { createClient } from '@pgshift/search'
+
+const db = createClient({ url: process.env.DATABASE_URL })
+```
+
+## API
+
+### `db.search(entity).index(config)`
+
+Creates the search index for an entity. Idempotent, safe to call on every startup.
+
+```ts
+await db.search('products').index({
+  fields: ['name', 'description', 'category'],
+  weights: { name: 'A', description: 'B', category: 'C' },
+  fuzzy: true,
+  language: 'english',
+})
+```
+
+| Option | Type | Default | Description |
+|---|---|---|---|
+| `fields` | `string[]` | required | Fields to include in the search index |
+| `weights` | `Record<string, 'A' \| 'B' \| 'C' \| 'D'>` | all `D` | Per-field ranking weight. A is highest. |
+| `fuzzy` | `boolean` | `false` | Enable trigram fuzzy matching |
+| `language` | `string` | `'english'` | Stemming language |
+
+### `db.search(entity).upsert(id, data)`
+
+Inserts or updates a document in the search index. Rebuilds the tsvector automatically.
+
+```ts
+await db.search('products').upsert('1', {
+  name: 'Nike Air Max 90',
+  description: 'Classic sneaker with visible Air unit.',
+  category: 'shoes',
+})
+```
+
+Call this after creating or updating a record in your main database.
+
+### `db.search(entity).query(term, options?)`
+
+Searches the index and returns ranked results.
+
+```ts
+const results = await db.search('products').query('air max', {
+  fuzzy: true,
+  filters: { category: 'shoes' },
+  limit: 20,
+  offset: 0,
+})
+```
+
+| Option | Type | Default | Description |
+|---|---|---|---|
+| `fuzzy` | `boolean` | index default | Enable fuzzy matching for this query |
+| `filters` | `Record<string, unknown>` | none | Equality filters applied alongside search |
+| `limit` | `number` | `20` | Max results to return |
+| `offset` | `number` | `0` | Pagination offset |
+| `language` | `string` | index default | Override stemming language |
+
+Returns `SearchResult<T>[]`:
+
+```ts
+interface SearchResult<T> {
+  id: string
+  rank: number  // 0 to 1 relevance score
+  data: T
+}
+```
+
+### `db.search(entity).delete(id)`
+
+Removes a document from the search index. Does not touch your main application table.
+
+```ts
+await db.search('products').delete('1')
+```
+
+## How fuzzy matching works
+
+When `fuzzy: true`, PgShift splits the search term into individual words and compares each one against the indexed text using `word_similarity` from `pg_trgm`. A document matches if any word exceeds a similarity threshold of 0.5.
+
+This allows queries like `"air maxx"` to match `"Nike Air Max 90"` even with typos.
+
+<Aside type="tip">
+Fuzzy matching requires the `pg_trgm` extension. PgShift enables it automatically when you call `index()` with `fuzzy: true`.
+</Aside>
+
+## Migration hints
+
+PgShift emits a migration hint when average query latency exceeds 200ms over 100 consecutive queries.
+
+```ts
+const db = createClient({
+  url: process.env.DATABASE_URL,
+  onMigrationHint(hint) {
+    console.warn(hint.reason)
+  },
+})
+```
+
+See [Migration Hints](/guides/migration-hints) for details.
