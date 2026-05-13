@@ -2,6 +2,7 @@ import { describe, expect, it, vi } from 'vitest'
 import { PgShiftClient } from '../../../packages/core/source/client'
 import type {
   CacheAdapter,
+  QueueAdapter,
   SearchAdapter,
 } from '../../../packages/core/source/types'
 
@@ -34,8 +35,27 @@ function mockCacheAdapter(overrides: Partial<CacheAdapter> = {}): CacheAdapter {
   }
 }
 
+function mockQueueAdapter(overrides: Partial<QueueAdapter> = {}): QueueAdapter {
+  return {
+    name: 'mock-queue',
+    ensureQueue: vi.fn().mockResolvedValue(undefined),
+    push: vi.fn().mockResolvedValue('job-1'),
+    process: vi.fn().mockResolvedValue(undefined),
+    cancel: vi.fn().mockResolvedValue(undefined),
+    stats: vi
+      .fn()
+      .mockResolvedValue({ pending: 0, processing: 0, done: 0, failed: 0 }),
+    teardown: vi.fn().mockResolvedValue(undefined),
+    ...overrides,
+  }
+}
+
 function makeClient(
-  adapters: { search?: () => SearchAdapter; cache?: () => CacheAdapter } = {},
+  adapters: {
+    search?: () => SearchAdapter
+    cache?: () => CacheAdapter
+    queue?: () => QueueAdapter
+  } = {},
 ) {
   return new PgShiftClient({
     config: { url: 'postgres://localhost/test' },
@@ -198,6 +218,104 @@ describe('PgShiftClient', () => {
     })
   })
 
+  describe('queue facade', () => {
+    it('throws when no queue adapter is configured', () => {
+      const client = makeClient()
+
+      expect(() => client.queue('emails')).toThrow('[PgShift]')
+    })
+
+    it('returns a queue handle when adapter is configured', () => {
+      const client = makeClient({ queue: () => mockQueueAdapter() })
+
+      expect(client.queue('emails')).toBeDefined()
+    })
+
+    it('returns the same handle instance for the same name', () => {
+      const client = makeClient({ queue: () => mockQueueAdapter() })
+
+      const a = client.queue('emails')
+      const b = client.queue('emails')
+
+      expect(a).toBe(b)
+    })
+
+    it('returns different handles for different names', () => {
+      const client = makeClient({ queue: () => mockQueueAdapter() })
+
+      const a = client.queue('emails')
+      const b = client.queue('notifications')
+
+      expect(a).not.toBe(b)
+    })
+
+    it('initializes the adapter only once across multiple queue handles', () => {
+      const factory = vi.fn(() => mockQueueAdapter())
+      const client = makeClient({ queue: factory })
+
+      client.queue('emails')
+      client.queue('notifications')
+      client.queue('reports')
+
+      expect(factory).toHaveBeenCalledOnce()
+    })
+
+    it('delegates setup to the adapter', async () => {
+      const adapter = mockQueueAdapter()
+      const client = makeClient({ queue: () => adapter })
+
+      await client.queue('emails').setup({ retries: 3 })
+
+      expect(adapter.ensureQueue).toHaveBeenCalledWith('emails', { retries: 3 })
+    })
+
+    it('delegates push to the adapter and returns the job id', async () => {
+      const adapter = mockQueueAdapter()
+      const client = makeClient({ queue: () => adapter })
+
+      const id = await client.queue('emails').push({ to: 'a@b.com' })
+
+      expect(adapter.push).toHaveBeenCalledWith(
+        'emails',
+        { to: 'a@b.com' },
+        undefined,
+      )
+      expect(id).toBe('job-1')
+    })
+
+    it('delegates process to the adapter', async () => {
+      const adapter = mockQueueAdapter()
+      const client = makeClient({ queue: () => adapter })
+      const handler = vi.fn()
+
+      await client.queue('emails').process(handler)
+
+      expect(adapter.process).toHaveBeenCalledWith('emails', handler)
+    })
+
+    it('delegates cancel to the adapter', async () => {
+      const adapter = mockQueueAdapter()
+      const client = makeClient({ queue: () => adapter })
+
+      await client.queue('emails').cancel('job-1')
+
+      expect(adapter.cancel).toHaveBeenCalledWith('emails', 'job-1')
+    })
+
+    it('delegates stats to the adapter and returns the result', async () => {
+      const result = { pending: 2, processing: 1, done: 5, failed: 0 }
+      const adapter = mockQueueAdapter({
+        stats: vi.fn().mockResolvedValue(result),
+      })
+      const client = makeClient({ queue: () => adapter })
+
+      const output = await client.queue('emails').stats()
+
+      expect(adapter.stats).toHaveBeenCalledWith('emails')
+      expect(output).toEqual(result)
+    })
+  })
+
   describe('destroy', () => {
     it('calls teardown on the search adapter', async () => {
       const adapter = mockSearchAdapter()
@@ -214,6 +332,16 @@ describe('PgShiftClient', () => {
       const client = makeClient({ cache: () => adapter })
 
       client.cache('top_products') // trigger lazy init
+      await client.destroy()
+
+      expect(adapter.teardown).toHaveBeenCalledOnce()
+    })
+
+    it('calls teardown on the queue adapter', async () => {
+      const adapter = mockQueueAdapter()
+      const client = makeClient({ queue: () => adapter })
+
+      client.queue('emails') // trigger lazy init
       await client.destroy()
 
       expect(adapter.teardown).toHaveBeenCalledOnce()
@@ -236,7 +364,7 @@ describe('PgShiftClient', () => {
         }),
       })
 
-      const client = new PgShiftClient({
+      new PgShiftClient({
         config: { url: 'postgres://localhost/test' },
         metrics: true,
         onMigrationHint,

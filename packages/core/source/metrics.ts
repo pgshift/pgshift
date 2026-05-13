@@ -14,6 +14,7 @@ export class MetricsCollector {
   private evaluate(snapshot: MetricSnapshot): void {
     if (snapshot.module === 'search') this.evaluateSearch(snapshot)
     if (snapshot.module === 'cache') this.evaluateCache(snapshot)
+    if (snapshot.module === 'queue') this.evaluateQueue(snapshot)
   }
 
   private evaluateSearch(snapshot: MetricSnapshot): void {
@@ -55,6 +56,27 @@ export class MetricsCollector {
         reason: `Average read latency is ${avg.toFixed(0)}ms over the last 100 reads.`,
         urgency: Math.min((avg - 50) / 200, 1),
         learnMoreUrl: 'https://pgshift.dev/docs/migrate/cache-to-redis',
+      })
+    }
+  }
+
+  private evaluateQueue(snapshot: MetricSnapshot): void {
+    const key = `queue:${snapshot.adapter}:latency`
+    if (this.hintsFired.has(key)) return
+
+    const recent = this.recent('queue', 100)
+    if (recent.length < 100) return
+
+    const avg = recent.reduce((s, m) => s + m.value, 0) / recent.length
+    if (avg > 500) {
+      this.hintsFired.add(key)
+      this.onHint?.({
+        module: 'queue',
+        currentAdapter: snapshot.adapter,
+        suggestedAdapter: 'bullmq',
+        reason: `Average job processing time is ${avg.toFixed(0)}ms over the last 100 jobs.`,
+        urgency: Math.min((avg - 500) / 1500, 1),
+        learnMoreUrl: 'https://pgshift.dev/docs/migrate/queue-to-bullmq',
       })
     }
   }

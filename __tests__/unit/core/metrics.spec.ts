@@ -147,8 +147,73 @@ describe('MetricsCollector', () => {
     })
   })
 
+  describe('queue migration hint', () => {
+    it('fires a hint when avg queue latency exceeds 500ms over 100 jobs', () => {
+      const onHint = vi.fn()
+      const collector = new MetricsCollector(onHint)
+
+      for (let i = 0; i < 100; i++) {
+        collector.record(makeSnapshot('queue', 800))
+      }
+
+      expect(onHint).toHaveBeenCalledOnce()
+      expect(onHint).toHaveBeenCalledWith(
+        expect.objectContaining({
+          module: 'queue',
+          suggestedAdapter: 'bullmq',
+        }),
+      )
+    })
+
+    it('does not fire a hint when avg queue latency is below 500ms', () => {
+      const onHint = vi.fn()
+      const collector = new MetricsCollector(onHint)
+
+      for (let i = 0; i < 100; i++) {
+        collector.record(makeSnapshot('queue', 300))
+      }
+
+      expect(onHint).not.toHaveBeenCalled()
+    })
+
+    it('fires the queue hint only once per session', () => {
+      const onHint = vi.fn()
+      const collector = new MetricsCollector(onHint)
+
+      for (let i = 0; i < 200; i++) {
+        collector.record(makeSnapshot('queue', 800))
+      }
+
+      expect(onHint).toHaveBeenCalledOnce()
+    })
+
+    it('includes an urgency score between 0 and 1', () => {
+      const onHint = vi.fn()
+      const collector = new MetricsCollector(onHint)
+
+      for (let i = 0; i < 100; i++) {
+        collector.record(makeSnapshot('queue', 2000))
+      }
+
+      const hint = onHint.mock.calls[0]![0]
+      expect(hint.urgency).toBeGreaterThan(0)
+      expect(hint.urgency).toBeLessThanOrEqual(1)
+    })
+
+    it('includes a learnMoreUrl', () => {
+      const onHint = vi.fn()
+      const collector = new MetricsCollector(onHint)
+
+      for (let i = 0; i < 100; i++) {
+        collector.record(makeSnapshot('queue', 800))
+      }
+
+      expect(onHint.mock.calls[0]![0].learnMoreUrl).toBeDefined()
+    })
+  })
+
   describe('hint isolation', () => {
-    it('fires hints independently for search and cache', () => {
+    it('fires hints independently for search, cache, and queue', () => {
       const onHint = vi.fn()
       const collector = new MetricsCollector(onHint)
 
@@ -160,7 +225,11 @@ describe('MetricsCollector', () => {
         collector.record(makeSnapshot('cache', 100))
       }
 
-      expect(onHint).toHaveBeenCalledTimes(2)
+      for (let i = 0; i < 100; i++) {
+        collector.record(makeSnapshot('queue', 800))
+      }
+
+      expect(onHint).toHaveBeenCalledTimes(3)
     })
 
     it('does not fire a search hint based on cache snapshots', () => {
@@ -173,6 +242,22 @@ describe('MetricsCollector', () => {
 
       const searchHint = onHint.mock.calls.find((c) => c[0].module === 'search')
       expect(searchHint).toBeUndefined()
+    })
+
+    it('does not fire a queue hint based on search or cache snapshots', () => {
+      const onHint = vi.fn()
+      const collector = new MetricsCollector(onHint)
+
+      for (let i = 0; i < 100; i++) {
+        collector.record(makeSnapshot('search', 300))
+      }
+
+      for (let i = 0; i < 100; i++) {
+        collector.record(makeSnapshot('cache', 100))
+      }
+
+      const queueHint = onHint.mock.calls.find((c) => c[0].module === 'queue')
+      expect(queueHint).toBeUndefined()
     })
   })
 
