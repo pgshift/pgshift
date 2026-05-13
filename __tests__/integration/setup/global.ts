@@ -1,4 +1,7 @@
 import Docker from 'dockerode'
+import { existsSync } from 'node:fs'
+import { homedir } from 'node:os'
+import { join } from 'node:path'
 import { Client } from 'pg'
 
 const CONTAINER_NAME = 'pgshift-test-postgres'
@@ -10,8 +13,31 @@ export const TEST_DATABASE_URL = `postgres://postgres:${POSTGRES_PASSWORD}@local
 
 let containerId: string | undefined
 
+function createDockerClient(): Docker {
+  // Respect DOCKER_HOST if set explicitly
+  if (process.env.DOCKER_HOST) {
+    const host = process.env.DOCKER_HOST.replace(/^unix:\/\//, '')
+    return new Docker({ socketPath: host })
+  }
+
+  // Docker Desktop on macOS
+  const macSocket = join(homedir(), '.docker', 'run', 'docker.sock')
+  if (existsSync(macSocket)) {
+    return new Docker({ socketPath: macSocket })
+  }
+
+  // Colima on macOS
+  const colimaSocket = join(homedir(), '.colima', 'default', 'docker.sock')
+  if (existsSync(colimaSocket)) {
+    return new Docker({ socketPath: colimaSocket })
+  }
+
+  // Fallback: Linux default socket
+  return new Docker({ socketPath: '/var/run/docker.sock' })
+}
+
 export async function setup() {
-  const docker = new Docker()
+  const docker = createDockerClient()
 
   // Remove existing container if it exists
   try {
@@ -20,7 +46,7 @@ export async function setup() {
     await existing.remove().catch(() => {})
   } catch {}
 
-  // Pull image if needed and start container
+  // Pull image if needed
   await new Promise<void>((resolve, reject) => {
     docker.pull(
       'postgres:16-alpine',
@@ -52,14 +78,13 @@ export async function setup() {
   await container.start()
   containerId = container.id
 
-  // Wait for Postgres to be ready
   await waitForPostgres()
 }
 
 export async function teardown() {
   if (!containerId) return
 
-  const docker = new Docker()
+  const docker = createDockerClient()
   try {
     const container = docker.getContainer(containerId)
     await container.stop()
