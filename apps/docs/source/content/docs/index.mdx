@@ -1,0 +1,147 @@
+---
+title: PgShift
+description: Start with Postgres. Shift only when you must.
+head:
+  - tag: title
+    content: PgShift - Start with Postgres. Shift only when you must.
+  - tag: style
+    content: >-
+      .hero-html {
+        --size: min(8rem, calc(4rem + 5vw));
+        font-size: var(--size);
+        justify-content: center;
+        z-index: -1;
+      }
+template: splash
+editUrl: false
+hero:
+  tagline: Start with Postgres. Shift only when you must.
+  image:
+    html: 🐘
+  actions:
+    - text: Get Started
+      link: /getting-started/
+      icon: right-arrow
+    - text: View on GitHub
+      link: https://github.com/mkafonso/pgshift
+      icon: external
+      variant: minimal
+---
+
+import { Card, CardGrid, TabItem, Tabs } from '@astrojs/starlight/components'
+
+## Why PgShift?
+
+Most teams reach for Redis, Kafka, and Elasticsearch before they actually need them. The result is fragile distributed infrastructure that costs more to operate than the product earns.
+
+PostgreSQL already handles full-text search, job queues, pub/sub messaging, and query result caching, natively. PgShift gives you a clean, consistent API on top of those capabilities, and tells you exactly when it's time to move on.
+
+<CardGrid>
+  <Card title="Search" icon="magnifier">
+    Full-text search with typo tolerance via `tsvector` and `pg_trgm`. No Elasticsearch cluster required.
+  </Card>
+  <Card title="Cache" icon="rocket">
+    Pre-compute expensive queries via materialized views. Instant reads, non-blocking refresh.
+  </Card>
+  <Card title="Queue" icon="list-format">
+    At-least-once job processing via `SKIP LOCKED`. Retries, dead letter queue, and priority built in.
+  </Card>
+  <Card title="Realtime" icon="random">
+    Pub/sub messaging via `LISTEN` and `NOTIFY`. No extra broker to maintain.
+  </Card>
+</CardGrid>
+
+## One install. One database.
+
+<Tabs>
+  <TabItem label="Search">
+    ```bash
+    npm install @pgshift/search
+    ```
+
+    ```ts
+    import { createClient } from '@pgshift/search'
+
+    const db = createClient({ url: process.env.DATABASE_URL })
+
+    await db.search('products').index({
+      fields: ['name', 'description'],
+      weights: { name: 'A', description: 'B' },
+      fuzzy: true,
+    })
+
+    await db.search('products').upsert('1', {
+      name: 'Nike Air Max 90',
+      description: 'Classic sneaker.',
+      category: 'shoes',
+    })
+
+    const results = await db.search('products').query('air maxx', {
+      fuzzy: true,
+      filters: { category: 'shoes' },
+    })
+    ```
+  </TabItem>
+  <TabItem label="Cache">
+    ```bash
+    npm install @pgshift/cache
+    ```
+
+    ```ts
+    import { createClient } from '@pgshift/cache'
+
+    const db = createClient({ url: process.env.DATABASE_URL })
+
+    await db.cache('top_products').register({
+      query: `
+        SELECT id AS _pgshift_id, name, SUM(amount) AS revenue
+        FROM orders JOIN products USING (product_id)
+        GROUP BY id, name
+        ORDER BY revenue DESC
+        LIMIT 10
+      `,
+      refreshEvery: 60,
+    })
+
+    const rows = await db.cache('top_products').get()
+    ```
+  </TabItem>
+  <TabItem label="Queue">
+    ```bash
+    npm install @pgshift/queue
+    ```
+
+    ```ts
+    import { createClient } from '@pgshift/queue'
+
+    const db = createClient({ url: process.env.DATABASE_URL })
+
+    await db.queue('emails').setup()
+
+    await db.queue('emails').push(
+      { to: 'user@example.com', subject: 'Welcome' },
+      { priority: 1, retries: 3 },
+    )
+
+    await db.queue('emails').process(async (job) => {
+      await sendEmail(job.payload)
+    })
+    ```
+  </TabItem>
+</Tabs>
+
+## Shift when you must
+
+PgShift tracks latency for every operation. When a module consistently hits the limits of what Postgres can handle efficiently, it emits a migration hint, telling you exactly when it's time to move to Elasticsearch, Redis, or Kafka.
+
+```ts
+const db = createClient({
+  url: process.env.DATABASE_URL,
+  onMigrationHint(hint) {
+    console.warn(`Consider migrating ${hint.module} to ${hint.suggestedAdapter}.`)
+    console.warn(hint.reason)
+  },
+})
+```
+
+When the time comes, the migration is infrastructure work, not application code. Your `db.search().query()`, `db.cache().get()`, and `db.queue().push()` calls stay exactly the same.
