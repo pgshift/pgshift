@@ -5,6 +5,8 @@ description: Full-text search powered by PostgreSQL.
 
 import { Aside } from '@astrojs/starlight/components'
 
+Most teams add a search bar, realize their SQL LIKE queries don't scale, and immediately reach for Elasticsearch. That's a managed cluster, index mappings, a sync pipeline, and a new failure point, for a feature that Postgres already handles natively.
+
 Full-text search via TSVector and TSQuery, with optional fuzzy matching via `pg_trgm`. No Elasticsearch cluster required.
 
 ## Install

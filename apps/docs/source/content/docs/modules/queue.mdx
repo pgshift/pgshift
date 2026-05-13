@@ -5,6 +5,8 @@ description: Background job processing via PostgreSQL SKIP LOCKED.
 
 import { Aside } from '@astrojs/starlight/components'
 
+Background jobs are one of the first things teams reach for a separate service to handle. Redis, RabbitMQ, SQS — all of them require new infrastructure before you've shipped anything. Postgres has been capable of reliable job queues for years. Most teams just don't know it.
+
 At-least-once background job processing using PostgreSQL's `SKIP LOCKED`. Includes retries, exponential backoff, priority ordering, and a dead letter queue.
 
 ## Install

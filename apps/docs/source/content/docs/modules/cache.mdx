@@ -5,6 +5,8 @@ description: Query result caching via PostgreSQL materialized views.
 
 import { Aside } from '@astrojs/starlight/components'
 
+Every SaaS has at least one query that's too slow to run on every request. The typical answer is Redis, a separate service to provision, monitor, and keep in sync with your database. Postgres has had a better answer for years.
+
 Caches the result of expensive SQL queries using PostgreSQL materialized views. Reads are instant, no recalculation at query time.
 
 ## Install
