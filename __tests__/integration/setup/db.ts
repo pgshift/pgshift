@@ -6,30 +6,28 @@ export function createPool(): Pool {
 }
 
 /**
- * Drops all _pgshift_ tables and materialized views created during a test.
- * Call in afterEach to ensure a clean state per test.
+ * Creates a unique schema for a single test and returns its name.
+ * Each test gets a completely isolated namespace in the database.
  */
-export async function cleanDatabase(pool: Pool): Promise<void> {
-  // Drop materialized views
-  const views = await pool.query<{ matviewname: string }>(`
-    SELECT matviewname FROM pg_matviews
-    WHERE matviewname LIKE '_pgshift_%'
-  `)
-  for (const { matviewname } of views.rows) {
-    await pool.query(`DROP MATERIALIZED VIEW IF EXISTS ${matviewname} CASCADE`)
-  }
+export async function createSchema(pool: Pool): Promise<string> {
+  const schema = `test_${Date.now()}_${Math.random().toString(36).slice(2, 7)}`
+  await pool.query(`CREATE SCHEMA ${schema}`)
+  return schema
+}
 
-  // Drop tables
-  const tables = await pool.query<{ tablename: string }>(`
-    SELECT tablename FROM pg_tables
-    WHERE schemaname = 'current_schema()'
-      AND tablename LIKE '_pgshift_%'
-  `)
-  for (const { tablename } of tables.rows) {
-    await pool.query(`DROP TABLE IF EXISTS ${tablename} CASCADE`)
-  }
+/**
+ * Drops the test schema and everything inside it.
+ */
+export async function dropSchema(pool: Pool, schema: string): Promise<void> {
+  await pool.query(`DROP SCHEMA IF EXISTS ${schema} CASCADE`)
+}
 
-  // Also clean config tables
-  await pool.query(`DROP TABLE IF EXISTS _pgshift_search_config CASCADE`)
-  await pool.query(`DROP TABLE IF EXISTS _pgshift_cache_config CASCADE`)
+/**
+ * Returns a DATABASE_URL with search_path set to the given schema.
+ * PgShift adapters will create all tables inside this schema.
+ */
+export function schemaUrl(schema: string): string {
+  const url = new URL(TEST_DATABASE_URL)
+  url.searchParams.set('options', `-c search_path=${schema}`)
+  return url.toString()
 }

@@ -1,32 +1,21 @@
-import type { Pool } from 'pg'
+import { Pool } from 'pg'
 import { afterEach, beforeEach, describe, expect, it } from 'vitest'
 import { createClient } from '../../../packages/cache/source/index'
-import { cleanDatabase, createPool } from '../setup/db'
-import { TEST_DATABASE_URL } from '../setup/global'
-
-const BASE_QUERY = `
-  SELECT
-    p.id          AS _pgshift_id,
-    p.name,
-    p.category,
-    COUNT(o.id)   AS order_count,
-    SUM(o.amount) AS total_revenue
-  FROM products p
-  LEFT JOIN orders o ON o.product_id = p.id
-  GROUP BY p.id, p.name, p.category
-  ORDER BY total_revenue DESC NULLS LAST
-  LIMIT 10
-`
+import { createPool, createSchema, dropSchema, schemaUrl } from '../setup/db'
 
 describe('cache integration', () => {
   let pool: Pool
+  let schema: string
+  let url: string
 
   beforeEach(async () => {
     pool = createPool()
+    schema = await createSchema(pool)
+    url = schemaUrl(schema)
 
-    // Create application tables for tests
+    // Create application tables inside the isolated schema
     await pool.query(`
-      CREATE TABLE IF NOT EXISTS products (
+      CREATE TABLE ${schema}.products (
         id       SERIAL PRIMARY KEY,
         name     TEXT NOT NULL,
         category TEXT NOT NULL
@@ -34,32 +23,44 @@ describe('cache integration', () => {
     `)
 
     await pool.query(`
-      CREATE TABLE IF NOT EXISTS orders (
+      CREATE TABLE ${schema}.orders (
         id         SERIAL PRIMARY KEY,
-        product_id INTEGER REFERENCES products(id),
+        product_id INTEGER REFERENCES ${schema}.products(id),
         amount     NUMERIC NOT NULL
       )
     `)
 
     await pool.query(`
-      INSERT INTO products (name, category) VALUES
+      INSERT INTO ${schema}.products (name, category) VALUES
         ('Widget A', 'Widgets'),
         ('Gadget X', 'Gadgets')
     `)
 
     await pool.query(`
-      INSERT INTO orders (product_id, amount) VALUES
+      INSERT INTO ${schema}.orders (product_id, amount) VALUES
         (1, 49.99), (1, 29.99),
         (2, 99.99)
     `)
   })
 
   afterEach(async () => {
-    await pool.query('DROP TABLE IF EXISTS orders CASCADE')
-    await pool.query('DROP TABLE IF EXISTS products CASCADE')
-    await cleanDatabase(pool)
+    await dropSchema(pool, schema)
     await pool.end()
   })
+
+  const BASE_QUERY = `
+    SELECT
+      p.id          AS _pgshift_id,
+      p.name,
+      p.category,
+      COUNT(o.id)   AS order_count,
+      SUM(o.amount) AS total_revenue
+    FROM products p
+    LEFT JOIN orders o ON o.product_id = p.id
+    GROUP BY p.id, p.name, p.category
+    ORDER BY total_revenue DESC NULLS LAST
+    LIMIT 10
+  `
 
   // -------------------------------------------------------------------------
   // register
@@ -67,7 +68,7 @@ describe('cache integration', () => {
 
   describe('register', () => {
     it('creates a materialized view without error', async () => {
-      const db = createClient({ url: TEST_DATABASE_URL })
+      const db = createClient({ url })
 
       await expect(
         db
@@ -76,7 +77,8 @@ describe('cache integration', () => {
       ).resolves.not.toThrow()
 
       const { rows } = await pool.query(`
-        SELECT matviewname FROM pg_matviews WHERE matviewname = '_pgshift_cache_top_products'
+        SELECT matviewname FROM pg_matviews
+        WHERE schemaname = '${schema}' AND matviewname = '_pgshift_cache_top_products'
       `)
       expect(rows).toHaveLength(1)
 
@@ -84,7 +86,7 @@ describe('cache integration', () => {
     })
 
     it('is idempotent — calling register twice does not throw', async () => {
-      const db = createClient({ url: TEST_DATABASE_URL })
+      const db = createClient({ url })
 
       await db
         .cache('top_products')
@@ -99,14 +101,14 @@ describe('cache integration', () => {
     })
 
     it('stores view config in _pgshift_cache_config', async () => {
-      const db = createClient({ url: TEST_DATABASE_URL })
+      const db = createClient({ url })
 
       await db
         .cache('top_products')
         .register({ query: BASE_QUERY, refreshEvery: 60 })
 
       const { rows } = await pool.query(
-        `SELECT * FROM _pgshift_cache_config WHERE name = 'top_products'`,
+        `SELECT * FROM ${schema}._pgshift_cache_config WHERE name = 'top_products'`,
       )
       expect(rows).toHaveLength(1)
       expect((rows[0] as { refresh_every: number }).refresh_every).toBe(60)
@@ -115,7 +117,7 @@ describe('cache integration', () => {
     })
 
     it('recreates the view when the query changes', async () => {
-      const db = createClient({ url: TEST_DATABASE_URL })
+      const db = createClient({ url })
 
       await db
         .cache('top_products')
@@ -138,7 +140,7 @@ describe('cache integration', () => {
 
   describe('get', () => {
     it('returns rows from the materialized view', async () => {
-      const db = createClient({ url: TEST_DATABASE_URL })
+      const db = createClient({ url })
       await db
         .cache('top_products')
         .register({ query: BASE_QUERY, refreshEvery: 60 })
@@ -151,7 +153,7 @@ describe('cache integration', () => {
     })
 
     it('returns rows with expected fields', async () => {
-      const db = createClient({ url: TEST_DATABASE_URL })
+      const db = createClient({ url })
       await db
         .cache('top_products')
         .register({ query: BASE_QUERY, refreshEvery: 60 })
@@ -167,7 +169,7 @@ describe('cache integration', () => {
     })
 
     it('throws when view has not been registered', async () => {
-      const db = createClient({ url: TEST_DATABASE_URL })
+      const db = createClient({ url })
 
       await expect(db.cache('top_products').get()).rejects.toThrow(
         'has not been registered',
@@ -183,7 +185,7 @@ describe('cache integration', () => {
 
   describe('refresh', () => {
     it('refreshes the view without error', async () => {
-      const db = createClient({ url: TEST_DATABASE_URL })
+      const db = createClient({ url })
       await db
         .cache('top_products')
         .register({ query: BASE_QUERY, refreshEvery: 60 })
@@ -194,24 +196,21 @@ describe('cache integration', () => {
     })
 
     it('reflects updated data after refresh', async () => {
-      const db = createClient({ url: TEST_DATABASE_URL })
+      const db = createClient({ url })
       await db
         .cache('top_products')
         .register({ query: BASE_QUERY, refreshEvery: 60 })
 
-      // Insert a new product and order after registration
       await pool.query(
-        `INSERT INTO products (name, category) VALUES ('New Product', 'Widgets')`,
+        `INSERT INTO ${schema}.products (name, category) VALUES ('New Product', 'Widgets')`,
       )
       await pool.query(
-        `INSERT INTO orders (product_id, amount) VALUES (3, 999.99)`,
+        `INSERT INTO ${schema}.orders (product_id, amount) VALUES (3, 999.99)`,
       )
 
-      // Before refresh — new data not visible
       const before = await db.cache('top_products').get<{ name: string }>()
       const hasNewBefore = before.some((r) => r.name === 'New Product')
 
-      // After refresh — new data visible
       await db.cache('top_products').refresh()
       const after = await db.cache('top_products').get<{ name: string }>()
       const hasNewAfter = after.some((r) => r.name === 'New Product')
@@ -223,20 +222,20 @@ describe('cache integration', () => {
     })
 
     it('updates last_refreshed in config after refresh', async () => {
-      const db = createClient({ url: TEST_DATABASE_URL })
+      const db = createClient({ url })
       await db
         .cache('top_products')
         .register({ query: BASE_QUERY, refreshEvery: 60 })
 
       const { rows: before } = await pool.query(
-        `SELECT last_refreshed FROM _pgshift_cache_config WHERE name = 'top_products'`,
+        `SELECT last_refreshed FROM ${schema}._pgshift_cache_config WHERE name = 'top_products'`,
       )
 
       await new Promise((r) => setTimeout(r, 10))
       await db.cache('top_products').refresh()
 
       const { rows: after } = await pool.query(
-        `SELECT last_refreshed FROM _pgshift_cache_config WHERE name = 'top_products'`,
+        `SELECT last_refreshed FROM ${schema}._pgshift_cache_config WHERE name = 'top_products'`,
       )
 
       expect(
