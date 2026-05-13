@@ -43,17 +43,17 @@ export interface MonthlyOptions {
  * Raw cron strings are also accepted wherever a schedule is expected.
  *
  * @example
- * schedule.every({ minutes: 5 })        // "5 * * * *"
+ * schedule.every({ minutes: 5 })        // "*\/5 * * * *"
  * schedule.daily({ hour: 8 })           // "0 8 * * *"
  * schedule.weekly({ day: 'monday' })    // "0 0 * * 1"
  */
 export const schedule = {
   every(options: EveryOptions): string {
     if (options.minutes !== undefined) {
-      return `${options.minutes} * * * *`
+      return `*/${options.minutes} * * * *`
     }
     if (options.hours !== undefined) {
-      return `0 ${options.hours} * * *`
+      return `0 */${options.hours} * * *`
     }
     throw new Error('[PgShift] schedule.every requires minutes or hours.')
   },
