@@ -15,6 +15,6 @@
     "@astrojs/vercel": "10.0.6",
     "@pgshift/lint": "*",
     "astro": "6.3.1",
-    "lucode-starlight": "0.1.2"
+    "starlight-theme-flexoki": "0.2.2"
   }
 }
