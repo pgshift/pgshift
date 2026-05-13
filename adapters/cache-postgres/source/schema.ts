@@ -88,6 +88,9 @@ export async function getViewConfig(
   refreshEvery: number | null
   lastRefreshed: Date | null
 }> {
+  // Ensure config table exists before querying
+  await ensureConfigTable(pool)
+
   const rows = await pool.query<{
     query: string
     refresh_every: number | null
