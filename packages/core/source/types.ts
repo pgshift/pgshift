@@ -154,3 +154,34 @@ export interface QueueAdapter {
   stats(queue: string): Awaitable<QueueStats>
   teardown?(): Awaitable<void>
 }
+
+// ---------------------------------------------------------------------------
+// Cron
+// ---------------------------------------------------------------------------
+
+export interface CronJobOptions {
+  /** Target queue name. Defaults to the queue configured in createClient. */
+  queue?: string
+  /** Payload inserted into the queue when the job fires. */
+  payload?: Record<string, unknown>
+}
+
+export interface CronJobInfo {
+  name: string
+  schedule: string
+  active: boolean
+  jobId: number
+}
+
+export interface CronAdapter {
+  readonly name: string
+  setup(): Awaitable<void>
+  schedule(
+    jobName: string,
+    cronExpr: string,
+    options: CronJobOptions,
+  ): Awaitable<void>
+  unschedule(jobName: string): Awaitable<void>
+  list(): Awaitable<CronJobInfo[]>
+  teardown?(): Awaitable<void>
+}
