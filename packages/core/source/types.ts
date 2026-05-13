@@ -23,7 +23,7 @@ export interface PgShiftConfig {
 // Metrics & migration hints
 // ---------------------------------------------------------------------------
 
-export type PgShiftModule = 'search' | 'cache'
+export type PgShiftModule = 'search' | 'cache' | 'queue'
 
 export type MetricUnit = 'ms' | 'count' | 'per_second' | 'bytes'
 
@@ -104,5 +104,50 @@ export interface CacheAdapter {
   register(name: string, config: CacheViewConfig): Awaitable<void>
   get<T = unknown>(name: string): Awaitable<T[]>
   refresh(name: string): Awaitable<void>
+  teardown?(): Awaitable<void>
+}
+
+// ---------------------------------------------------------------------------
+// Queue
+// ---------------------------------------------------------------------------
+
+export interface QueueJobOptions {
+  delay?: number
+  retries?: number
+  backoff?: 'fixed' | 'exponential'
+  priority?: number
+  timeout?: number
+}
+
+export interface QueueJob<T = unknown> {
+  id: string
+  name: string
+  payload: T
+  attempts: number
+  createdAt: Date
+  scheduledAt: Date
+}
+
+export interface QueueStats {
+  pending: number
+  processing: number
+  done: number
+  failed: number
+}
+
+export interface QueueAdapter {
+  readonly name: string
+  ensureQueue(queue: string, options?: QueueJobOptions): Awaitable<void>
+  push<T = unknown>(
+    queue: string,
+    payload: T,
+    options?: QueueJobOptions,
+  ): Awaitable<string>
+  process<T = unknown>(
+    queue: string,
+    handler: (job: QueueJob<T>) => Awaitable<void>,
+  ): Awaitable<void>
+  cancel(queue: string, jobId: string): Awaitable<void>
+  stats(queue: string): Awaitable<QueueStats>
   teardown?(): Awaitable<void>
 }
