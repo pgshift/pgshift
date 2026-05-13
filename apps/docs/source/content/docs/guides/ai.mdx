@@ -1,0 +1,78 @@
+---
+title: PgShift + AI
+description: Use AI assistants to build with PgShift faster.
+---
+
+import { Card, CardGrid } from '@astrojs/starlight/components'
+
+PgShift works well with AI coding assistants. The consistent API and explicit TypeScript types make it straightforward for AI to generate correct code.
+
+## llms.txt
+
+PgShift publishes a machine-readable summary of its API at [pgshift.dev/llms.txt](https://pgshift.dev/llms.txt).
+
+Reference it directly in any AI assistant for accurate, up-to-date context:
+
+```md
+Read https://pgshift.dev/llms.txt and use it as context for all PgShift questions.
+```
+
+## Cursor
+
+Create a `.cursorrules` file at the root of your project:
+
+```md
+You are helping build a Node.js application using PgShift for infrastructure backed by PostgreSQL.
+
+Rules:
+- Import createClient from the specific module: @pgshift/search, @pgshift/cache, or @pgshift/queue
+- Call db.search(entity).index() before upsert or query
+- Call db.cache(name).register() before get or refresh
+- Call db.queue(name).setup() before push or process
+- Call db.destroy() on process exit
+- Never import internal adapter packages directly
+
+Search pattern:
+  await db.search('entity').index({ fields, weights, fuzzy })
+  await db.search('entity').upsert(id, data)
+  await db.search('entity').query(term, { fuzzy, filters, limit })
+
+Cache pattern:
+  await db.cache('name').register({ query, refreshEvery })
+  await db.cache('name').get()
+
+Queue pattern:
+  await db.queue('name').setup()
+  await db.queue('name').push(payload, { priority, retries, delay })
+  await db.queue('name').process(async (job) => { ... })
+
+Full API reference: https://pgshift.dev/llms.txt
+```
+
+## GitHub Copilot
+
+Create `.github/copilot-instructions.md`:
+
+```md
+This project uses PgShift for infrastructure backed by PostgreSQL.
+
+- Import createClient from @pgshift/search, @pgshift/cache, or @pgshift/queue
+- Always call index(), register(), or setup() before using a module
+- Always call db.destroy() on process exit
+- Make queue handlers idempotent (at-least-once delivery)
+```
+
+## System prompt for ChatGPT or Claude
+
+```md
+I am building a Node.js application using PgShift, an infrastructure toolkit backed by PostgreSQL.
+
+Key rules:
+- Import createClient from @pgshift/search, @pgshift/cache, or @pgshift/queue
+- Call index() before search upsert or query
+- Call register() before cache get or refresh
+- Call setup() before queue push or process
+- Call db.destroy() on process exit
+
+Full API: https://pgshift.dev/llms.txt
+```
