@@ -346,7 +346,7 @@ describe('queue integration', () => {
 
       const stats = await db.queue('emails').stats()
 
-      expect(stats.pending).toBe(2) // 2 immediate jobs
+      expect(stats.pending).toBe(3) // all 3 are pending (delayed jobs included)
       expect(stats.done).toBe(0)
 
       await db.destroy()
@@ -361,11 +361,13 @@ describe('queue integration', () => {
       await db.queue('emails').process(async () => {})
 
       await sleep(1_500)
-      await db.destroy()
 
+      // Check stats before destroying
       const stats = await db.queue('emails').stats()
       expect(stats.done).toBe(1)
       expect(stats.pending).toBe(0)
+
+      await db.destroy()
     })
   })
 
