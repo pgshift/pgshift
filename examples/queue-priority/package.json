@@ -1,0 +1,17 @@
+{
+  "name": "@pgshift/example-queue-priority",
+  "version": "0.0.0",
+  "private": true,
+  "type": "module",
+  "scripts": {
+    "dev": "tsx index.ts",
+    "format": "biome format --write ."
+  },
+  "dependencies": {
+    "@pgshift/queue": "*"
+  },
+  "devDependencies": {
+    "@pgshift/lint": "*",
+    "tsx": "4.21.0"
+  }
+}
