@@ -15,6 +15,7 @@
   },
   "packageManager": "npm@11.14.1",
   "workspaces": [
+    "apps/*",
     "adapters/*",
     "examples/*",
     "packages/*",
