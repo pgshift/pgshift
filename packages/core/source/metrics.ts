@@ -16,6 +16,7 @@ export class MetricsCollector {
     if (snapshot.module === 'cache') this.evaluateCache(snapshot)
     if (snapshot.module === 'queue') this.evaluateQueue(snapshot)
     if (snapshot.module === 'cron') this.evaluateCron(snapshot)
+    if (snapshot.module === 'vector') this.evaluateVector(snapshot)
   }
 
   private evaluateSearch(snapshot: MetricSnapshot): void {
@@ -99,6 +100,27 @@ export class MetricsCollector {
         reason: `Average job scheduling latency is ${avg.toFixed(0)}ms over the last 100 jobs.`,
         urgency: Math.min((avg - 1000) / 4000, 1),
         learnMoreUrl: 'https://pgshift.dev/docs/migrate/cron-to-temporal',
+      })
+    }
+  }
+
+  private evaluateVector(snapshot: MetricSnapshot): void {
+    const key = `vector:${snapshot.adapter}:latency`
+    if (this.hintsFired.has(key)) return
+
+    const recent = this.recent('vector', 100)
+    if (recent.length < 100) return
+
+    const avg = recent.reduce((s, m) => s + m.value, 0) / recent.length
+    if (avg > 500) {
+      this.hintsFired.add(key)
+      this.onHint?.({
+        module: 'vector',
+        currentAdapter: snapshot.adapter,
+        suggestedAdapter: 'pinecone',
+        reason: `Average query latency is ${avg.toFixed(0)}ms over the last 100 queries.`,
+        urgency: Math.min((avg - 500) / 1500, 1),
+        learnMoreUrl: 'https://pgshift.dev/docs/migrate/vector-to-pinecone',
       })
     }
   }

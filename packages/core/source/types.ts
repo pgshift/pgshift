@@ -23,7 +23,7 @@ export interface PgShiftConfig {
 // Metrics & migration hints
 // ---------------------------------------------------------------------------
 
-export type PgShiftModule = 'search' | 'cache' | 'queue' | 'cron'
+export type PgShiftModule = 'search' | 'cache' | 'queue' | 'cron' | 'vector'
 
 export type MetricUnit = 'ms' | 'count' | 'per_second' | 'bytes'
 
@@ -183,5 +183,46 @@ export interface CronAdapter {
   ): Awaitable<void>
   unschedule(jobName: string): Awaitable<void>
   list(): Awaitable<CronJobInfo[]>
+  teardown?(): Awaitable<void>
+}
+
+// ---------------------------------------------------------------------------
+// Vector
+// ---------------------------------------------------------------------------
+
+export type VectorMetric = 'cosine' | 'euclidean' | 'dotproduct'
+
+export interface VectorIndexConfig {
+  dimensions: number
+  metric?: VectorMetric
+}
+
+export interface VectorUpsertData {
+  embedding: number[]
+  data?: Record<string, unknown>
+}
+
+export interface VectorQueryOptions {
+  embedding: number[]
+  topK?: number
+  minScore?: number
+  filters?: Record<string, unknown>
+}
+
+export interface VectorResult<T = Record<string, unknown>> {
+  id: string
+  score: number
+  data: T
+}
+
+export interface VectorAdapter {
+  readonly name: string
+  index(entity: string, config: VectorIndexConfig): Awaitable<void>
+  upsert(entity: string, id: string, data: VectorUpsertData): Awaitable<void>
+  query<T = Record<string, unknown>>(
+    entity: string,
+    options: VectorQueryOptions,
+  ): Awaitable<VectorResult<T>[]>
+  delete(entity: string, id: string): Awaitable<void>
   teardown?(): Awaitable<void>
 }

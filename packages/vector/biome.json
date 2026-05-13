@@ -1,0 +1,6 @@
+{
+  "extends": ["@pgshift/lint/biome.json"],
+  "vcs": {
+    "useIgnoreFile": false
+  }
+}
