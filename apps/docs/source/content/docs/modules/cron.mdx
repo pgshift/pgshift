@@ -1,0 +1,192 @@
+---
+title: Cron
+description: Recurring job scheduling via pg_cron and PostgreSQL queues.
+---
+
+import { Aside } from '@astrojs/starlight/components'
+
+Schedule recurring jobs using PostgreSQL's `pg_cron` extension. When a job fires, PgShift inserts a payload into a `@pgshift/queue` table so your existing worker processes it.
+
+## Install
+
+```bash
+npm install @pgshift/cron
+```
+
+## Setup
+
+```ts
+import { createClient } from '@pgshift/cron'
+
+const db = createClient({
+  url: process.env.DATABASE_URL,
+  queue: 'tasks',
+})
+
+await db.cron.setup()
+```
+
+The `queue` option sets the default queue for all cron jobs. Individual jobs can override it.
+
+<Aside type="caution">
+`db.cron.setup()` runs `CREATE EXTENSION IF NOT EXISTS pg_cron`, which requires superuser or `rds_superuser` privileges.
+</Aside>
+
+## API
+
+### `db.cron.setup()`
+
+Ensures the `pg_cron` extension is installed. Idempotent, safe to call on every startup.
+
+```ts
+await db.cron.setup()
+```
+
+### `db.cron(name).schedule(expr, options)`
+
+Creates or replaces a cron job. When the job fires, a payload is inserted into the target queue.
+
+```ts
+await db.cron('cleanup-sessions').schedule(schedule.daily({ hour: 0 }), {
+  payload: { type: 'cleanup-sessions' },
+})
+```
+
+Use the `queue` option to override the default queue for a specific job:
+
+```ts
+await db.cron('monthly-report').schedule(schedule.monthly({ day: 1, hour: 9 }), {
+  queue: 'reports',
+  payload: { type: 'monthly-report' },
+})
+```
+
+| Option | Type | Description |
+|---|---|---|
+| `payload` | `object` | Arbitrary JSON passed to the queue job |
+| `queue` | `string` | Queue to push into. Defaults to the client-level `queue` |
+
+You can also pass a raw cron string instead of using the `schedule` helper:
+
+```ts
+await db.cron('every-five-minutes').schedule('*/5 * * * *', {
+  payload: { type: 'poll' },
+})
+```
+
+### `db.cron(name).unschedule()`
+
+Removes a scheduled job by name.
+
+```ts
+await db.cron('cleanup-sessions').unschedule()
+```
+
+### `db.cron.list()`
+
+Returns all PgShift-managed cron jobs.
+
+```ts
+const jobs = await db.cron.list()
+```
+
+Each entry contains:
+
+```ts
+interface CronJobInfo {
+  name: string
+  schedule: string
+  active: boolean
+  jobId: number
+}
+```
+
+## Schedule builder
+
+The `schedule` helper builds cron expressions from readable options. Raw cron strings are also accepted anywhere a schedule is expected.
+
+```ts
+import { schedule } from '@pgshift/cron'
+
+schedule.every({ minutes: 5 })           // "*/5 * * * *"
+schedule.every({ hours: 2 })             // "0 */2 * * *"
+schedule.hourly({ minute: 30 })          // "30 * * * *"
+schedule.daily({ hour: 8 })              // "0 8 * * *"
+schedule.daily({ hour: 8, minute: 30 })  // "30 8 * * *"
+schedule.weekly({ day: 'monday', hour: 9 })  // "0 9 * * 1"
+schedule.monthly({ day: 1, hour: 0 })    // "0 0 1 * *"
+```
+
+### `schedule.every(options)`
+
+| Option | Type | Description |
+|---|---|---|
+| `minutes` | `number` | Run every N minutes |
+| `hours` | `number` | Run every N hours |
+
+### `schedule.hourly(options?)`
+
+| Option | Type | Default | Description |
+|---|---|---|---|
+| `minute` | `number` | `0` | Minute of the hour to run |
+
+### `schedule.daily(options?)`
+
+| Option | Type | Default | Description |
+|---|---|---|---|
+| `hour` | `number` | `0` | Hour of the day (UTC) |
+| `minute` | `number` | `0` | Minute of the hour |
+
+### `schedule.weekly(options)`
+
+| Option | Type | Default | Description |
+|---|---|---|---|
+| `day` | `DayName` | required | Day of the week (`'monday'`, `'tuesday'`, etc.) |
+| `hour` | `number` | `0` | Hour of the day (UTC) |
+| `minute` | `number` | `0` | Minute of the hour |
+
+### `schedule.monthly(options)`
+
+| Option | Type | Default | Description |
+|---|---|---|---|
+| `day` | `number` | required | Day of the month (1–31) |
+| `hour` | `number` | `0` | Hour of the day (UTC) |
+| `minute` | `number` | `0` | Minute of the hour |
+
+## Processing cron jobs
+
+Cron jobs are delivered as regular queue jobs. Use `@pgshift/queue` to process them:
+
+```ts
+import { createClient as createQueueClient } from '@pgshift/queue'
+
+const queue = createQueueClient({ url: process.env.DATABASE_URL })
+
+await queue.queue('tasks').setup()
+
+await queue.queue('tasks').process(async (job) => {
+  const { type } = job.payload as { type: string }
+
+  switch (type) {
+    case 'cleanup-sessions':
+      await cleanupExpiredSessions()
+      break
+    case 'weekly-digest':
+      await sendWeeklyDigest()
+      break
+  }
+})
+```
+
+## Graceful shutdown
+
+```ts
+process.on('SIGTERM', async () => {
+  await db.destroy()
+  process.exit(0)
+})
+```
+
+## All schedules are UTC
+
+`pg_cron` runs in UTC. Make sure to convert your intended local times before scheduling.

@@ -46,6 +46,9 @@ PostgreSQL already handles full-text search, job queues, pub/sub messaging, and 
   <Card title="Queue" icon="list-format">
     At-least-once job processing via `SKIP LOCKED`. Retries, dead letter queue, and priority built in.
   </Card>
+  <Card title="Cron" icon="sun">
+    Recurring job scheduling via `pg_cron`. Jobs fire as queue entries -- no extra scheduler process.
+  </Card>
   <Card title="Realtime" icon="random">
     Pub/sub messaging via `LISTEN` and `NOTIFY`. No extra broker to maintain.
   </Card>
@@ -125,6 +128,56 @@ PostgreSQL already handles full-text search, job queues, pub/sub messaging, and 
 
     await db.queue('emails').process(async (job) => {
       await sendEmail(job.payload)
+    })
+    ```
+  </TabItem>
+  <TabItem label="Cron">
+    ```bash
+    npm install @pgshift/cron @pgshift/queue
+    ```
+
+    ```ts
+    import { createClient as createCronClient, schedule } from '@pgshift/cron'
+    import { createClient as createQueueClient } from '@pgshift/queue'
+
+    const cron = createCronClient({
+      url: process.env.DATABASE_URL,
+      queue: 'tasks',
+    })
+    // Ensure pg_cron extension is installed
+    await cron.cron.setup()
+
+    const queue = createQueueClient({ url: DATABASE_URL })
+    // Setup the queue table
+    await queue.queue('tasks').setup()
+
+    // Every Monday at 8am — send weekly digest
+    await cron.cron('weekly-digest').schedule(
+      schedule.weekly({ day: 'monday', hour: 8 }),
+      { payload: { type: 'weekly-digest' } },
+    )
+
+    // Every 5 minutes
+    await cron.cron('heartbeat').schedule('*/5 * * * *', {
+      payload: { type: 'heartbeat' },
+    })
+
+    // Worker processes jobs when they fire
+    await queue.queue('tasks').process(async (job) => {
+      const { type } = job.payload
+
+      switch (type) {
+        case 'weekly-digest':
+          await sendWeeklyDigest()
+          break
+
+        case 'heartbeat':
+          await ping()
+          break
+
+        default:
+          console.log(`Unknown job type: ${type}`)
+      }
     })
     ```
   </TabItem>

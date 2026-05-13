@@ -38,6 +38,7 @@ export default defineConfig({
             { label: 'Search', slug: 'modules/search' },
             { label: 'Cache', slug: 'modules/cache' },
             { label: 'Queue', slug: 'modules/queue' },
+            { label: 'Cron', slug: 'modules/cron' },
           ],
         },
         {
@@ -54,6 +55,10 @@ export default defineConfig({
             {
               label: 'Queue postgres adapter',
               slug: 'adapters/queue-postgres',
+            },
+            {
+              label: 'Cron postgres adapter',
+              slug: 'adapters/cron-postgres',
             },
           ],
         },

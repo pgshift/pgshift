@@ -5,7 +5,7 @@ description: Install PgShift and run your first search query in minutes.
 
 PgShift is an open source infrastructure toolkit for Node.js applications backed by PostgreSQL.
 
-Search, caching, queues, and realtime — all inside the Postgres instance you already run. No new services to provision. No new credentials to manage.
+Search, caching, queues, cron jobs, and realtime -- all inside the Postgres instance you already run. No new services to provision. No new credentials to manage.
 
 ## Requirements
 
@@ -26,6 +26,10 @@ npm install @pgshift/cache
 
 ```bash
 npm install @pgshift/queue
+```
+
+```bash
+npm install @pgshift/cron
 ```
 
 ## Configure
@@ -75,7 +79,8 @@ await db.destroy()
 
 ## Next steps
 
-- [Search module](/modules/search) — full API reference
-- [Cache module](/modules/cache) — materialized view caching
-- [Queue module](/modules/queue) — background job processing
-- [Migration Hints](/guides/migration-hints) — how PgShift tells you when to move on
+- [Search module](/modules/search) -- full API reference
+- [Cache module](/modules/cache) -- materialized view caching
+- [Queue module](/modules/queue) -- background job processing
+- [Cron module](/modules/cron) -- recurring job scheduling
+- [Migration Hints](/guides/migration-hints) -- how PgShift tells you when to move on
