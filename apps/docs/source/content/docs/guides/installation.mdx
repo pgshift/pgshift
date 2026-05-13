@@ -1,0 +1,97 @@
+---
+title: Installation
+description: Install PgShift packages in your Node.js project.
+---
+
+import { Card, CardGrid, TabItem, Tabs } from '@astrojs/starlight/components'
+
+PgShift is organized as independent modules. Install only what you need.
+
+## Packages
+
+| Package | Description |
+|---|---|
+| `@pgshift/search` | Full-text search via TSVector and pg_trgm |
+| `@pgshift/cache` | Query result caching via materialized views |
+| `@pgshift/queue` | Background job processing via SKIP LOCKED |
+
+## Install
+
+<Tabs>
+  <TabItem label="npm">
+    ```bash
+    npm install @pgshift/search
+    npm install @pgshift/cache
+    npm install @pgshift/queue
+    ```
+  </TabItem>
+  <TabItem label="pnpm">
+    ```bash
+    pnpm add @pgshift/search
+    pnpm add @pgshift/cache
+    pnpm add @pgshift/queue
+    ```
+  </TabItem>
+  <TabItem label="yarn">
+    ```bash
+    yarn add @pgshift/search
+    yarn add @pgshift/cache
+    yarn add @pgshift/queue
+    ```
+  </TabItem>
+</Tabs>
+
+## Requirements
+
+- **Node.js** 20 or later
+- **PostgreSQL** 12 or later
+- An existing Postgres connection string
+
+## Environment setup
+
+PgShift reads your connection string directly. No ORM configuration required.
+
+```ts
+const db = createClient({
+  url: process.env.DATABASE_URL,
+})
+```
+
+A typical `DATABASE_URL` follows the format:
+
+```
+postgres://user:password@host:5432/database
+```
+
+## SSL
+
+Pass an `ssl` option when connecting to managed Postgres providers:
+
+```ts
+const db = createClient({
+  url: process.env.DATABASE_URL,
+  ssl: { rejectUnauthorized: false },
+})
+```
+
+## Connection pool size
+
+The default pool size is 10 connections. Adjust with the `max` option:
+
+```ts
+const db = createClient({
+  url: process.env.DATABASE_URL,
+  max: 20,
+})
+```
+
+## Teardown
+
+Always call `db.destroy()` on process exit to drain the connection pool cleanly.
+
+```ts
+process.on('SIGTERM', async () => {
+  await db.destroy()
+  process.exit(0)
+})
+```
