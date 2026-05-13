@@ -1,0 +1,13 @@
+{
+  "name": "@pgshift/ts",
+  "version": "0.0.0",
+  "private": true,
+  "files": [
+    "node.json",
+    "base.json"
+  ],
+  "devDependencies": {
+    "@types/node": "25.7.0",
+    "typescript": "6.0.3"
+  }
+}
