@@ -1,0 +1,32 @@
+{
+  "name": "@pgshift/adapter-queue-postgres",
+  "description": "Internal PostgreSQL adapter for @pgshift/queue.",
+  "version": "0.0.0",
+  "type": "module",
+  "main": "./dist/index.mjs",
+  "types": "./dist/index.d.mts",
+  "exports": {
+    ".": {
+      "import": "./dist/index.mjs",
+      "types": "./dist/index.d.mts"
+    }
+  },
+  "files": [
+    "README.md",
+    "dist"
+  ],
+  "scripts": {
+    "build": "tsdown",
+    "format": "biome format --write ."
+  },
+  "dependencies": {
+    "@pgshift/core": "*",
+    "pg": "8.20.0"
+  },
+  "devDependencies": {
+    "@pgshift/lint": "*",
+    "@pgshift/ts": "*",
+    "@types/pg": "8.20.0",
+    "tsdown": "0.22.0"
+  }
+}

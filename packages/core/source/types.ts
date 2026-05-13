@@ -123,9 +123,12 @@ export interface QueueJob<T = unknown> {
   id: string
   name: string
   payload: T
+  status: string
+  priority: number
   attempts: number
+  maxRetries: number
+  runAt: Date
   createdAt: Date
-  scheduledAt: Date
 }
 
 export interface QueueStats {
