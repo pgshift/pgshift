@@ -36,8 +36,8 @@ export default defineConfig({
           label: 'Modules',
           items: [
             { label: 'Search', slug: 'modules/search' },
-            { label: 'Cache', slug: 'modules/cache' },
             { label: 'Queue', slug: 'modules/queue' },
+            { label: 'Cache', slug: 'modules/cache' },
             { label: 'Cron', slug: 'modules/cron' },
           ],
         },
@@ -49,12 +49,12 @@ export default defineConfig({
               slug: 'adapters/search-postgres',
             },
             {
-              label: 'Cache postgres adapter',
-              slug: 'adapters/cache-postgres',
-            },
-            {
               label: 'Queue postgres adapter',
               slug: 'adapters/queue-postgres',
+            },
+            {
+              label: 'Cache postgres adapter',
+              slug: 'adapters/cache-postgres',
             },
             {
               label: 'Cron postgres adapter',
