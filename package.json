@@ -18,6 +18,7 @@
     "adapters/*",
     "examples/*",
     "packages/*",
-    "tooling/*"
+    "tooling/*",
+    "__tests__"
   ]
 }
