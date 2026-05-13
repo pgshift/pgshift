@@ -1,5 +1,5 @@
 {
-  "name": "@pgshift/cache-basic",
+  "name": "@pgshift/example-cache-basic",
   "version": "0.0.0",
   "private": true,
   "type": "module",

@@ -1,5 +1,5 @@
 {
-  "name": "@pgshift/search-ranking",
+  "name": "@pgshift/example-search-ranking",
   "version": "0.0.0",
   "private": true,
   "type": "module",
