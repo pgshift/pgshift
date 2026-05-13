@@ -1,0 +1,23 @@
+{
+  "name": "@pgshift/__tests__",
+  "version": "0.0.0",
+  "private": true,
+  "type": "module",
+  "scripts": {
+    "test": "vitest run",
+    "test:unit": "vitest run unit",
+    "test:integration": "vitest run integration",
+    "test:watch": "vitest",
+    "format": "biome format --write ."
+  },
+  "dependencies": {
+    "@pgshift/cache": "*",
+    "@pgshift/core": "*",
+    "@pgshift/search": "*"
+  },
+  "devDependencies": {
+    "@pgshift/lint": "*",
+    "@pgshift/ts": "*",
+    "vitest": "4.1.6"
+  }
+}
