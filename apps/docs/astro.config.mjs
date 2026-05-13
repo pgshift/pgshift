@@ -1,5 +1,5 @@
-import { defineConfig } from 'astro/config'
 import starlight from '@astrojs/starlight'
+import { defineConfig } from 'astro/config'
 import { fileURLToPath } from 'node:url'
 import starlightThemeFlexoki from 'starlight-theme-flexoki'
 
@@ -28,33 +28,32 @@ export default defineConfig({
         {
           label: 'Getting Started',
           items: [
-            { label: 'Introduction', slug: '' },
-            { label: 'Installation', slug: '' },
+            { label: 'Introduction', slug: 'guides/getting-started' },
+            { label: 'Installation', slug: 'guides/installation' },
           ],
         },
         {
           label: 'Modules',
           items: [
-            { label: 'Search', slug: '' },
-            { label: 'Cache', slug: '' },
-            { label: 'Queue', slug: '' },
-            { label: 'Realtime', slug: '' },
+            { label: 'Search', slug: 'modules/search' },
+            { label: 'Cache', slug: 'modules/cache' },
+            { label: 'Queue', slug: 'modules/queue' },
           ],
         },
         {
           label: 'Adapters',
           items: [
-            { label: 'search-postgres', slug: '' },
-            { label: 'cache-postgres', slug: '' },
-            { label: 'queue-postgres', slug: '' },
+            { label: 'search-postgres', slug: 'adapters/search-postgres' },
+            { label: 'cache-postgres', slug: 'adapters/cache-postgres' },
+            { label: 'queue-postgres', slug: 'adapters/queue-postgres' },
           ],
         },
         {
           label: 'Guides',
           items: [
-            { label: 'Migration Hints', slug: '' },
-            { label: 'PgShift + AI', slug: '' },
-            { label: 'Contributing', slug: '' },
+            { label: 'Migration Hints', slug: 'guides/migration-hints' },
+            { label: 'PgShift + AI', slug: 'guides/ai' },
+            { label: 'Contributing', slug: 'guides/contributing' },
           ],
         },
       ],
