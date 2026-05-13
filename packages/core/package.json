@@ -1,0 +1,32 @@
+{
+  "name": "@pgshift/core",
+  "version": "0.1.0",
+  "description": "PgShift core — client, types, and adapter contracts.",
+  "type": "module",
+  "homepage": "https://pgshift-docs.vercel.app/",
+  "repository": {
+    "type": "git",
+    "url": "git+https://github.com/mkafonso/pgshift.git"
+  },
+  "main": "./dist/index.mjs",
+  "types": "./dist/index.d.mts",
+  "exports": {
+    ".": {
+      "import": "./dist/index.mjs",
+      "types": "./dist/index.d.mts"
+    }
+  },
+  "files": [
+    "dist",
+    "README.md"
+  ],
+  "scripts": {
+    "build": "tsdown",
+    "format": "biome format --write ."
+  },
+  "devDependencies": {
+    "@pgshift/lint": "*",
+    "@pgshift/ts": "*",
+    "tsdown": "0.22.0"
+  }
+}
