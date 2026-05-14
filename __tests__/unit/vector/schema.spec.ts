@@ -3,7 +3,7 @@ import {
   distanceOperator,
   distanceToScore,
   vectorTable,
-} from '../../../adapters/vector-postgres/source/schema.js'
+} from '../../../adapters/vector-postgres/source/schema'
 
 describe('vectorTable', () => {
   it('prefixes entity with _pgshift_vector_', () => {

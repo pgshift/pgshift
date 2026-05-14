@@ -1,9 +1,9 @@
 import { describe, expect, it, vi } from 'vitest'
-import { PgShiftClient } from '../../../packages/core/source/client.js'
+import { PgShiftClient } from '../../../packages/core/source/client'
 import type {
   VectorAdapter,
   VectorResult,
-} from '../../../packages/core/source/types.js'
+} from '../../../packages/core/source/types'
 
 function mockVectorAdapter(
   overrides: Partial<VectorAdapter> = {},
