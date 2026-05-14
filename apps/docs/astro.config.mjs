@@ -26,10 +26,11 @@ export default defineConfig({
       ],
       sidebar: [
         {
-          label: 'Getting Started',
+          label: 'Introduction',
           items: [
-            { label: 'Introduction', slug: 'guides/getting-started' },
+            { label: 'What is PgShift?', slug: 'guides/getting-started' },
             { label: 'Installation', slug: 'guides/installation' },
+            { label: 'Migration Hints', slug: 'guides/migration-hints' },
           ],
         },
         {
@@ -39,34 +40,38 @@ export default defineConfig({
             { label: 'Queue', slug: 'modules/queue' },
             { label: 'Cache', slug: 'modules/cache' },
             { label: 'Cron', slug: 'modules/cron' },
+            { label: 'Vector', slug: 'modules/vector' },
           ],
         },
         {
-          label: 'Adapters',
+          label: 'Postgres Adapters',
           items: [
             {
-              label: 'Search postgres adapter',
+              label: 'Search Adapter',
               slug: 'adapters/search-postgres',
             },
             {
-              label: 'Queue postgres adapter',
+              label: 'Queue Adapter',
               slug: 'adapters/queue-postgres',
             },
             {
-              label: 'Cache postgres adapter',
+              label: 'Cache Adapter',
               slug: 'adapters/cache-postgres',
             },
             {
-              label: 'Cron postgres adapter',
+              label: 'Cron Adapter',
               slug: 'adapters/cron-postgres',
+            },
+            {
+              label: 'Vector Adapter',
+              slug: 'adapters/vector-postgres',
             },
           ],
         },
         {
           label: 'Guides',
           items: [
-            { label: 'Migration Hints', slug: 'guides/migration-hints' },
-            { label: 'PgShift + AI', slug: 'guides/ai' },
+            { label: 'AI Applications', slug: 'guides/ai' },
             { label: 'Contributing', slug: 'guides/contributing' },
           ],
         },

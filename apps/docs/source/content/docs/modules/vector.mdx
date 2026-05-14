@@ -1,0 +1,262 @@
+---
+title: Vector
+description: Semantic search and hybrid search via pgvector and HNSW indexes.
+---
+
+import { Aside, Steps } from '@astrojs/starlight/components'
+
+Most teams add AI-powered search and immediately reach for Pinecone or Weaviate. That means a new managed service, new API keys, a sync pipeline between your database and the vector store, and cross-service joins every time you want to combine vector similarity with relational filters.
+
+PostgreSQL with pgvector solves this natively. Semantic search, hybrid search, and relational filters all run in a single query against the same database you already use. No sync pipeline. No cross-service joins.
+
+## Install
+
+```bash
+npm install @pgshift/vector
+```
+
+<Aside type="caution">
+`pgvector` must be installed on your PostgreSQL server. It is available on Supabase, Neon, Amazon RDS, and Tembo. For local development, use the provided Docker setup.
+</Aside>
+
+## Setup
+
+<Steps>
+
+1. **Create the client**
+
+   ```ts
+   import { createClient } from '@pgshift/vector'
+
+   const db = createClient({ url: process.env.DATABASE_URL })
+   ```
+
+2. **Create the vector index**
+
+   ```ts
+   await db.vector('documents').index({
+     dimensions: 1536, // must match your embedding model
+     metric: 'cosine',
+   })
+   ```
+
+   This creates the vector table, an HNSW index, and stores the configuration. Safe to call on every startup.
+
+3. **Insert documents**
+
+   ```ts
+   await db.vector('documents').upsert('1', {
+     embedding: await embed('Getting started with PgShift'),
+     data: { title: 'Getting started', userId: '123', category: 'docs' },
+   })
+   ```
+
+4. **Search**
+
+   ```ts
+   const results = await db.vector('documents').query({
+     embedding: await embed('how to install pgshift'),
+     topK: 5,
+   })
+   ```
+
+</Steps>
+
+## API
+
+### `db.vector(entity).index(config)`
+
+Creates the vector table and HNSW index for an entity. Idempotent, safe to call on every startup.
+
+```ts
+await db.vector('documents').index({
+  dimensions: 1536,
+  metric: 'cosine',
+})
+```
+
+| Option | Type | Default | Description |
+|---|---|---|---|
+| `dimensions` | `number` | required | Must match your embedding model |
+| `metric` | `VectorMetric` | `'cosine'` | Distance metric for similarity search |
+
+**Supported metrics:**
+
+| Metric | Postgres operator | Best for |
+|---|---|---|
+| `cosine` | `<=>` | Text embeddings, semantic similarity |
+| `euclidean` | `<->` | Geometric distance, image embeddings |
+| `dotproduct` | `<#>` | Maximum inner product, recommendation models |
+
+### `db.vector(entity).upsert(id, data)`
+
+Inserts or updates a vector and its metadata. If a document with the same `id` already exists, it is replaced.
+
+```ts
+await db.vector('documents').upsert('doc-1', {
+  embedding: [0.1, 0.2, ...],
+  data: {
+    title: 'Getting started',
+    userId: '123',
+    category: 'docs',
+    createdAt: '2025-01-01',
+  },
+})
+```
+
+| Field | Type | Description |
+|---|---|---|
+| `embedding` | `number[]` | The vector. Length must match `dimensions`. |
+| `data` | `object` | Arbitrary metadata returned in query results and available for hybrid filtering |
+
+### `db.vector(entity).query(options)`
+
+Searches the index and returns the nearest neighbors, ranked by similarity score.
+
+```ts
+const results = await db.vector('documents').query({
+  embedding: queryEmbedding,
+  topK: 10,
+  minScore: 0.7,
+  filters: { userId: '123' },
+})
+```
+
+| Option | Type | Default | Description |
+|---|---|---|---|
+| `embedding` | `number[]` | required | The query vector |
+| `topK` | `number` | `10` | Maximum number of results |
+| `minScore` | `number` | none | Minimum similarity score (0 to 1). Results below this are excluded. |
+| `filters` | `object` | none | Equality filters for hybrid search |
+
+Returns `VectorResult<T>[]`:
+
+```ts
+interface VectorResult<T> {
+  id: string
+  score: number  // 0 to 1, higher is more similar
+  data: T
+}
+```
+
+### `db.vector(entity).delete(id)`
+
+Removes a document from the vector index.
+
+```ts
+await db.vector('documents').delete('doc-1')
+```
+
+## Hybrid search
+
+The key advantage over Pinecone and Weaviate is hybrid search: vector similarity and relational filters in a single query, with no cross-service join.
+
+```ts
+// Without hybrid search — two round trips, manual intersection in memory
+const vectors = await pinecone.query({ vector: embedding, topK: 100 })
+const filtered = vectors.filter(v => v.metadata.userId === '123').slice(0, 10)
+
+// With PgShift — one query, no manual intersection
+const results = await db.vector('documents').query({
+  embedding,
+  topK: 10,
+  filters: { userId: '123' },
+})
+```
+
+Filters apply as SQL `WHERE` clauses against the JSONB `data` column, combined with the HNSW vector search in one query. This is accurate, fast, and requires no extra infrastructure.
+
+## Distance metrics and scores
+
+Score values depend on the metric used:
+
+| Metric | Score formula | Score range |
+|---|---|---|
+| `cosine` | `1 - distance` | 0 to 1 |
+| `euclidean` | `1 / (1 + distance)` | 0 to 1 |
+| `dotproduct` | `1 + distance` | varies |
+
+For text embeddings, `cosine` is almost always the right choice.
+
+## Embedding models
+
+PgShift is model-agnostic. Pass any float array as the embedding.
+
+```ts
+// OpenAI — dimensions: 1536
+const { data } = await openai.embeddings.create({
+  model: 'text-embedding-ada-002',
+  input: text,
+})
+const embedding = data[0].embedding
+
+// OpenAI — dimensions: 3072 (text-embedding-3-large)
+// Cohere — dimensions: 1024 (embed-english-v3.0)
+// Google — dimensions: 768 (textembedding-gecko)
+```
+
+Match the `dimensions` option to your model exactly.
+
+## Complete example
+
+```ts
+import { createClient } from '@pgshift/vector'
+import OpenAI from 'openai'
+
+const db = createClient({ url: process.env.DATABASE_URL })
+const openai = new OpenAI()
+
+async function embed(text: string): Promise<number[]> {
+  const { data } = await openai.embeddings.create({
+    model: 'text-embedding-ada-002',
+    input: text,
+  })
+  return data[0].embedding
+}
+
+// Setup
+await db.vector('documents').index({
+  dimensions: 1536,
+  metric: 'cosine',
+})
+
+// Index documents
+await db.vector('documents').upsert('1', {
+  embedding: await embed('Getting started with PgShift'),
+  data: { title: 'Getting started', userId: 'user_123', category: 'docs' },
+})
+
+await db.vector('documents').upsert('2', {
+  embedding: await embed('How to configure the queue module'),
+  data: { title: 'Queue configuration', userId: 'user_456', category: 'docs' },
+})
+
+// Semantic search
+const results = await db.vector('documents').query({
+  embedding: await embed('installation guide'),
+  topK: 5,
+})
+
+// Hybrid search — same query, only documents from a specific user
+const userResults = await db.vector('documents').query({
+  embedding: await embed('installation guide'),
+  topK: 5,
+  filters: { userId: 'user_123' },
+  minScore: 0.7,
+})
+
+results.forEach((r) => {
+  const { title } = r.data as { title: string }
+  console.log(`[${r.score.toFixed(3)}] ${title}`)
+})
+
+await db.destroy()
+```
+
+## Migration hints
+
+PgShift emits a migration hint when average query latency consistently exceeds thresholds expected for the index size.
+
+At very high vector counts or query volumes, consider migrating to a dedicated vector database. Your `db.vector().query()` calls stay the same regardless of which adapter is active.
+
+See [Migration Hints](/guides/migration-hints) for details.
