@@ -30,6 +30,7 @@ export type PgShiftModule =
   | 'cron'
   | 'vector'
   | 'state'
+  | 'workflow'
 
 export type MetricUnit = 'ms' | 'count' | 'per_second' | 'bytes'
 
@@ -237,38 +238,27 @@ export interface VectorAdapter {
 // ---------------------------------------------------------------------------
 
 export interface StateDefinition {
-  /** The column that holds the state value */
   field: string
-  /** All valid state values */
   states: string[]
-  /** Allowed transitions per state. Empty array means terminal state. */
   transitions: Record<string, string[]>
-  /** Initial state value for new rows */
   initial?: string
 }
 
 export type StateNormalizeConfig = Record<string, string>
 
 export interface StateAuditConfig {
-  /** Fields to track. Defaults to all columns. */
   track?: string[]
 }
 
 export interface StateConsensusConfig {
-  /** The target transition that requires consensus */
   transition: string
-  /** Number of approvals required */
   require: number
-  /** Optional list of roles allowed to approve */
   roles?: string[]
-  /** Optional SQL condition — consensus only applies when this evaluates to true */
   when?: string
 }
 
 export interface StateApprovalOptions {
-  /** ID of the approver */
   by: string
-  /** Optional role of the approver */
   role?: string
 }
 
@@ -307,5 +297,52 @@ export interface StateAdapter {
     table: string,
     entityId: string,
   ): Awaitable<StatePendingApproval[]>
+  teardown?(): Awaitable<void>
+}
+
+// ---------------------------------------------------------------------------
+// Workflow
+// ---------------------------------------------------------------------------
+
+export interface WorkflowStepDefinition {
+  handler: string
+  retries?: number
+  compensate?: string
+}
+
+export interface WorkflowDefinition {
+  steps: Record<string, WorkflowStepDefinition>
+  dag: Record<string, string[]>
+}
+
+export interface WorkflowStepStatus {
+  status: string
+  attempts: number
+  output?: Record<string, unknown>
+  error?: string
+  startedAt?: Date
+  completedAt?: Date
+}
+
+export interface WorkflowRunStatus {
+  runId: string
+  workflow: string
+  status: string
+  input: Record<string, unknown>
+  startedAt: Date
+  finishedAt?: Date
+  steps: Record<string, WorkflowStepStatus>
+}
+
+export interface WorkflowAdapter {
+  readonly name: string
+  define(name: string, definition: WorkflowDefinition): Awaitable<void>
+  handlers(
+    name: string,
+    handlers: Record<string, (ctx: unknown) => Promise<unknown>>,
+  ): Awaitable<void>
+  run(name: string, input?: Record<string, unknown>): Awaitable<string>
+  status(runId: string): Awaitable<WorkflowRunStatus>
+  work(name: string): Awaitable<void>
   teardown?(): Awaitable<void>
 }
