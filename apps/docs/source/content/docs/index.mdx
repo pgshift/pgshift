@@ -183,6 +183,33 @@ PostgreSQL already handles full-text search, job queues, pub/sub messaging, quer
     })
     ```
   </TabItem>
+  <TabItem label="State and Consensus">
+  ```bash
+  npm install @pgshift/state
+  ```
+
+  ```ts
+  import { createClient, normalizers } from '@pgshift/state'
+
+  const db = createClient({ url: process.env.DATABASE_URL })
+
+  await db.state('loans')
+    .define({
+      field: 'status',
+      states: ['pending', 'approved', 'rejected'],
+      transitions: { pending: ['approved', 'rejected'], approved: [], rejected: [] },
+      initial: 'pending',
+    })
+    .normalize({ amount: 'ABS({value})' })
+    .audit({ track: ['status', 'amount'] })
+    .consensus({
+      transition: 'approved',
+      require: 2,
+      roles: ['finance', 'manager'],
+      when: 'NEW.amount > 10000000',
+    })
+    ```
+  </TabItem>
 </Tabs>
 
 ## Shift when you must
