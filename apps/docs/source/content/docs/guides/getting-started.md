@@ -21,7 +21,7 @@ npm install @pgshift/search
 ```
 
 ```bash
-npm install @pgshift/queue
+npm install @pgshift/vector
 ```
 
 ## Configure

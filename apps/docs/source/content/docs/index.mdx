@@ -82,52 +82,35 @@ PostgreSQL already handles full-text search, job queues, pub/sub messaging, quer
     })
     ```
   </TabItem>
-  <TabItem label="Cache">
-    ```bash
-    npm install @pgshift/cache
-    ```
 
-    ```ts
-    import { createClient } from '@pgshift/cache'
+  <TabItem label="State and Consensus">
+  ```bash
+  npm install @pgshift/state
+  ```
 
-    const db = createClient({ url: process.env.DATABASE_URL })
+  ```ts
+  import { createClient, normalizers } from '@pgshift/state'
 
-    await db.cache('top_products').register({
-      query: `
-        SELECT id AS _pgshift_id, name, SUM(amount) AS revenue
-        FROM orders JOIN products USING (product_id)
-        GROUP BY id, name
-        ORDER BY revenue DESC
-        LIMIT 10
-      `,
-      refreshEvery: 60,
+  const db = createClient({ url: process.env.DATABASE_URL })
+
+  await db.state('loans')
+    .define({
+      field: 'status',
+      states: ['pending', 'approved', 'rejected'],
+      transitions: { pending: ['approved', 'rejected'], approved: [], rejected: [] },
+      initial: 'pending',
     })
-
-    const rows = await db.cache('top_products').get()
-    ```
-  </TabItem>
-  <TabItem label="Queue">
-    ```bash
-    npm install @pgshift/queue
-    ```
-
-    ```ts
-    import { createClient } from '@pgshift/queue'
-
-    const db = createClient({ url: process.env.DATABASE_URL })
-
-    await db.queue('emails').setup()
-
-    await db.queue('emails').push(
-      { to: 'user@example.com', subject: 'Welcome' },
-      { priority: 1, retries: 3 },
-    )
-
-    await db.queue('emails').process(async (job) => {
-      await sendEmail(job.payload)
+    .normalize({ amount: 'ABS({value})' })
+    .audit({ track: ['status', 'amount'] })
+    .consensus({
+      transition: 'approved',
+      require: 2,
+      roles: ['finance', 'manager'],
+      when: 'NEW.amount > 10000000',
     })
     ```
   </TabItem>
+
   <TabItem label="Vector">
     ```bash
     npm install @pgshift/vector
@@ -157,6 +140,55 @@ PostgreSQL already handles full-text search, job queues, pub/sub messaging, quer
     })
     ```
   </TabItem>
+
+  <TabItem label="Queue">
+    ```bash
+    npm install @pgshift/queue
+    ```
+
+    ```ts
+    import { createClient } from '@pgshift/queue'
+
+    const db = createClient({ url: process.env.DATABASE_URL })
+
+    await db.queue('emails').setup()
+
+    await db.queue('emails').push(
+      { to: 'user@example.com', subject: 'Welcome' },
+      { priority: 1, retries: 3 },
+    )
+
+    await db.queue('emails').process(async (job) => {
+      await sendEmail(job.payload)
+    })
+    ```
+  </TabItem>
+
+  <TabItem label="Cache">
+    ```bash
+    npm install @pgshift/cache
+    ```
+
+    ```ts
+    import { createClient } from '@pgshift/cache'
+
+    const db = createClient({ url: process.env.DATABASE_URL })
+
+    await db.cache('top_products').register({
+      query: `
+        SELECT id AS _pgshift_id, name, SUM(amount) AS revenue
+        FROM orders JOIN products USING (product_id)
+        GROUP BY id, name
+        ORDER BY revenue DESC
+        LIMIT 10
+      `,
+      refreshEvery: 60,
+    })
+
+    const rows = await db.cache('top_products').get()
+    ```
+  </TabItem>
+
   <TabItem label="Cron">
     ```bash
     npm install @pgshift/cron @pgshift/queue
@@ -180,33 +212,6 @@ PostgreSQL already handles full-text search, job queues, pub/sub messaging, quer
     await queue.queue('tasks').process(async (job) => {
       const { type } = job.payload as { type: string }
       if (type === 'weekly-digest') await sendWeeklyDigest()
-    })
-    ```
-  </TabItem>
-  <TabItem label="State and Consensus">
-  ```bash
-  npm install @pgshift/state
-  ```
-
-  ```ts
-  import { createClient, normalizers } from '@pgshift/state'
-
-  const db = createClient({ url: process.env.DATABASE_URL })
-
-  await db.state('loans')
-    .define({
-      field: 'status',
-      states: ['pending', 'approved', 'rejected'],
-      transitions: { pending: ['approved', 'rejected'], approved: [], rejected: [] },
-      initial: 'pending',
-    })
-    .normalize({ amount: 'ABS({value})' })
-    .audit({ track: ['status', 'amount'] })
-    .consensus({
-      transition: 'approved',
-      require: 2,
-      roles: ['finance', 'manager'],
-      when: 'NEW.amount > 10000000',
     })
     ```
   </TabItem>
