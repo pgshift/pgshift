@@ -49,7 +49,7 @@ export async function setup() {
   // Pull image if needed
   await new Promise<void>((resolve, reject) => {
     docker.pull(
-      'postgres:16-alpine',
+      'pgvector/pgvector:pg16',
       (err: Error, stream: NodeJS.ReadableStream) => {
         if (err) return resolve() // image already exists locally
         docker.modem.followProgress(stream, (err: Error | null) => {
@@ -61,7 +61,7 @@ export async function setup() {
   })
 
   const container = await docker.createContainer({
-    Image: 'postgres:16-alpine',
+    Image: 'pgvector/pgvector:pg16',
     name: CONTAINER_NAME,
     Env: [
       `POSTGRES_PASSWORD=${POSTGRES_PASSWORD}`,
