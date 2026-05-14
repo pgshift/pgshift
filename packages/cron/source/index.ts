@@ -1,5 +1,5 @@
 import { createPostgresCronAdapter } from '@pgshift/adapter-cron-postgres'
-import { schedule } from './schedule.js'
+import { schedule } from './schedule'
 import type {
   CronJobInfo,
   CronJobOptions,

@@ -2,7 +2,7 @@ import type { PgShiftConfig, WorkflowAdapter } from '@pgshift/core'
 import { createPostgresWorkflowAdapter as adapterCreatePostgresWorkflowAdapter } from './adapter'
 import { PgPool } from './pool'
 
-export type { WorkflowContext, WorkflowStepConfig } from './adapter.js'
+export type { WorkflowContext, WorkflowStepConfig } from './adapter'
 
 /**
  * Internal factory used by @pgshift/worflow.

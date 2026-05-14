@@ -5,7 +5,7 @@ import {
   listJobs,
   scheduleQueueJob,
   unscheduleJob,
-} from './schema.js'
+} from './schema'
 
 function queueTable(name: string): string {
   const safe = name.toLowerCase().replace(/[^a-z0-9_]/g, '_')
