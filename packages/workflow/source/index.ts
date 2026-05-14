@@ -8,7 +8,10 @@ import type {
 } from '@pgshift/core'
 import { PgShiftClient } from '@pgshift/core'
 
-export type { WorkflowContext, WorkflowStepConfig } from '@pgshift/adapter-workflow-postgres'
+export type {
+  WorkflowContext,
+  WorkflowStepConfig,
+} from '@pgshift/adapter-workflow-postgres'
 export type { WorkflowDefinition, WorkflowRunStatus } from '@pgshift/core'
 
 export interface CreateWorkflowClientOptions {
@@ -71,7 +74,9 @@ export interface CreateWorkflowClientOptions {
  * const status = await db.workflow('order-fulfillment').status(runId)
  * ```
  */
-export function createClient(options: CreateWorkflowClientOptions): PgShiftClient & {
+export function createClient(
+  options: CreateWorkflowClientOptions,
+): PgShiftClient & {
   workflow: (name: string) => WorkflowHandle
 } {
   const config: PgShiftConfig = {
