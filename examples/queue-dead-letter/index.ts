@@ -1,7 +1,8 @@
 import { createClient } from '@pgshift/queue'
 import { Pool } from 'pg'
 
-const DATABASE_URL = 'postgres://user:pass@localhost:5432/pgshift_test'
+const DATABASE_URL =
+  'postgres://postgres:pgshift_test@localhost:5499/pgshift_test'
 
 const db = createClient({ url: DATABASE_URL })
 const pool = new Pool({ connectionString: DATABASE_URL })

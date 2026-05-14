@@ -1,6 +1,7 @@
 import { createClient } from '@pgshift/queue'
 
-const DATABASE_URL = 'postgres://user:pass@localhost:5432/pgshift_test'
+const DATABASE_URL =
+  'postgres://postgres:pgshift_test@localhost:5499/pgshift_test'
 
 const db = createClient({ url: DATABASE_URL })
 

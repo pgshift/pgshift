@@ -1,8 +1,9 @@
 import { createClient } from '@pgshift/search'
 
-const db = createClient({
-  url: 'postgres://user:pass@localhost:5432/pgshift_test',
-})
+const DATABASE_URL =
+  'postgres://postgres:pgshift_test@localhost:5499/pgshift_test'
+
+const db = createClient({ url: DATABASE_URL })
 
 await db.search('products').index({
   fields: ['name', 'description', 'category'],

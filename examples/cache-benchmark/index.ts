@@ -1,7 +1,8 @@
 import { createClient } from '@pgshift/cache'
 import { Pool } from 'pg'
 
-const DATABASE_URL = 'postgres://user:pass@localhost:5432/pgshift_test'
+const DATABASE_URL =
+  'postgres://postgres:pgshift_test@localhost:5499/pgshift_test'
 
 const ITERATIONS = 50
 

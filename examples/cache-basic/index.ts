@@ -1,8 +1,9 @@
 import { createClient } from '@pgshift/cache'
 
-const db = createClient({
-  url: 'postgres://user:pass@localhost:5432/pgshift_test',
-})
+const DATABASE_URL =
+  'postgres://postgres:pgshift_test@localhost:5499/pgshift_test'
+
+const db = createClient({ url: DATABASE_URL })
 
 // Register a materialized view.
 // The query runs once and the result is stored on disk.

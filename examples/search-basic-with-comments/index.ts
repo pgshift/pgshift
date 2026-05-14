@@ -1,9 +1,10 @@
 import { createClient } from '@pgshift/search'
 
+const DATABASE_URL =
+  'postgres://postgres:pgshift_test@localhost:5499/pgshift_test'
+
 // Create a connection to PostgreSQL
-const db = createClient({
-  url: 'postgres://user:pass@localhost:5432/pgshift_test',
-})
+const db = createClient({ url: DATABASE_URL })
 
 // ─────────────────────────────────────────────────────────────
 // Create (or sync) the search index for the "products" entity.
