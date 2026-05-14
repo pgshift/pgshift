@@ -3,7 +3,7 @@ title: Installation
 description: Install PgShift packages in your Node.js project.
 ---
 
-import { Card, CardGrid, TabItem, Tabs } from '@astrojs/starlight/components'
+import { Tabs, TabItem } from '@astrojs/starlight/components'
 
 PgShift is organized as independent modules. Install only what you need.
 
@@ -14,7 +14,8 @@ PgShift is organized as independent modules. Install only what you need.
 | `@pgshift/search` | Full-text search via TSVector and pg_trgm |
 | `@pgshift/cache` | Query result caching via materialized views |
 | `@pgshift/queue` | Background job processing via SKIP LOCKED |
-| `@pgshift/cron` | Recurring job scheduling via pg_cron |
+| `@pgshift/vector` | Semantic and hybrid search via pgvector and HNSW indexes |
+| `@pgshift/cron` | Recurring job scheduling via pg_cron (requires `@pgshift/queue`) |
 
 ## Install
 
@@ -24,7 +25,8 @@ PgShift is organized as independent modules. Install only what you need.
     npm install @pgshift/search
     npm install @pgshift/cache
     npm install @pgshift/queue
-    npm install @pgshift/cron
+    npm install @pgshift/vector
+    npm install @pgshift/cron @pgshift/queue
     ```
   </TabItem>
   <TabItem label="pnpm">
@@ -32,7 +34,8 @@ PgShift is organized as independent modules. Install only what you need.
     pnpm add @pgshift/search
     pnpm add @pgshift/cache
     pnpm add @pgshift/queue
-    pnpm add @pgshift/cron
+    pnpm add @pgshift/vector
+    pnpm add @pgshift/cron @pgshift/queue
     ```
   </TabItem>
   <TabItem label="yarn">
@@ -40,7 +43,8 @@ PgShift is organized as independent modules. Install only what you need.
     yarn add @pgshift/search
     yarn add @pgshift/cache
     yarn add @pgshift/queue
-    yarn add @pgshift/cron
+    yarn add @pgshift/vector
+    yarn add @pgshift/cron @pgshift/queue
     ```
   </TabItem>
 </Tabs>
@@ -50,6 +54,14 @@ PgShift is organized as independent modules. Install only what you need.
 - **Node.js** 20 or later
 - **PostgreSQL** 12 or later
 - An existing Postgres connection string
+
+Some modules require additional Postgres extensions:
+
+| Module | Extension | Notes |
+|---|---|---|
+| `@pgshift/search` | `pg_trgm` | Enabled automatically when `fuzzy: true` |
+| `@pgshift/vector` | `pgvector` | Must be installed on the Postgres server |
+| `@pgshift/cron` | `pg_cron` | Must be installed on the Postgres server. Not available on all providers. |
 
 ## Environment setup
 

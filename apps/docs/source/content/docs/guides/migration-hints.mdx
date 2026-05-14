@@ -1,0 +1,107 @@
+---
+title: Migration Hints
+description: How PgShift tells you when it is time to move to a specialized backend.
+---
+
+import { Aside } from '@astrojs/starlight/components'
+
+PgShift is built on an honest premise: Postgres is the right tool for most early-stage infrastructure, but not forever. Every module collects latency metrics in the background and emits a migration hint when it detects that you are approaching the limits of what Postgres can handle efficiently.
+
+The hint is not an alarm. It is a signal that you should start planning.
+
+## Configuration
+
+```ts
+const db = createClient({
+  url: process.env.DATABASE_URL,
+  metrics: true,
+  onMigrationHint(hint) {
+    // Log it, send it to your observability platform, or open a Slack alert
+    console.warn(`[pgshift] Migration hint for ${hint.module}`)
+    console.warn(`  Current adapter: ${hint.currentAdapter}`)
+    console.warn(`  Suggested: ${hint.suggestedAdapter}`)
+    console.warn(`  Reason: ${hint.reason}`)
+    console.warn(`  Urgency: ${hint.urgency}`) // 0 to 1
+  },
+})
+```
+
+Metrics collection is enabled by default. Set `metrics: false` to disable it.
+
+Each hint fires only once per process lifetime to avoid log noise.
+
+## Thresholds
+
+| Module | What is measured | Threshold | Suggested migration |
+|---|---|---|---|
+| `search` | Average query latency | Over 200ms across 100 queries | Elasticsearch, Typesense |
+| `cache` | Average read latency | Over 50ms across 100 reads | Redis |
+| `queue` | Average job processing lag | Over 5s average wait time | BullMQ with Redis, SQS |
+| `vector` | Average query latency | Over 100ms across 100 queries | Pinecone, Weaviate |
+
+Thresholds are conservative by design. A single slow query will not trigger a hint. The threshold must be consistently exceeded before PgShift considers it a signal worth surfacing.
+
+<Aside type="tip">
+A hint at urgency 0.3 means you are approaching the threshold. A hint at urgency 0.8 means you are well past it and degradation is likely visible to users.
+</Aside>
+
+## The MigrationHint type
+
+```ts
+interface MigrationHint {
+  module: 'search' | 'cache' | 'queue' | 'vector' | 'realtime'
+  currentAdapter: string
+  suggestedAdapter: string
+  reason: string
+  urgency: number       // 0 to 1 — how urgent the migration is
+  learnMoreUrl?: string // link to docs for the suggested adapter
+}
+```
+
+## What migration actually involves
+
+PgShift does not automate infrastructure migrations. When a hint fires, the planning work is yours.
+
+**Search to Elasticsearch**: provision a cluster, design index mappings, reindex existing data, and set up a sync pipeline from your database to Elasticsearch.
+
+**Cache to Redis**: provision a Redis instance, decide on TTL strategy and eviction policy, and update the invalidation logic in your application.
+
+**Queue to BullMQ or SQS**: provision Redis or an SQS queue, migrate existing pending jobs, and update your worker configuration.
+
+**Vector to Pinecone or Weaviate**: provision the vector database, re-embed and reindex your data, and update your upsert pipeline.
+
+In every case, your application-level API stays exactly the same. The migration is infrastructure work, not application code.
+
+```ts
+// Before migration — Postgres
+const results = await db.search('products').query('air max', { fuzzy: true })
+
+// After migration — Elasticsearch
+const results = await db.search('products').query('air max', { fuzzy: true })
+
+// Identical. The adapter changes, your code does not.
+```
+
+## Sending hints to your observability stack
+
+```ts
+const db = createClient({
+  url: process.env.DATABASE_URL,
+  onMigrationHint(hint) {
+    // Datadog
+    datadog.increment('pgshift.migration_hint', 1, [
+      `module:${hint.module}`,
+      `urgency:${Math.round(hint.urgency * 10) / 10}`,
+    ])
+
+    // Sentry
+    Sentry.captureMessage(`PgShift migration hint: ${hint.module}`, {
+      level: hint.urgency > 0.7 ? 'warning' : 'info',
+      extra: hint,
+    })
+
+    // Slack
+    await slack.send(`PgShift suggests migrating *${hint.module}* to *${hint.suggestedAdapter}*. Urgency: ${hint.urgency}.`)
+  },
+})
+```

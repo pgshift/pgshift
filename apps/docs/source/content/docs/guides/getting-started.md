@@ -21,15 +21,7 @@ npm install @pgshift/search
 ```
 
 ```bash
-npm install @pgshift/cache
-```
-
-```bash
 npm install @pgshift/queue
-```
-
-```bash
-npm install @pgshift/cron
 ```
 
 ## Configure
