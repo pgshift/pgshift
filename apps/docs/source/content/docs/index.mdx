@@ -34,7 +34,7 @@ import { Card, CardGrid, TabItem, Tabs } from '@astrojs/starlight/components'
 
 Most teams reach for Redis, Kafka, and Elasticsearch before they actually need them. The result is fragile distributed infrastructure that costs more to operate than the product earns.
 
-PostgreSQL already handles full-text search, job queues, pub/sub messaging, and query result caching, natively. PgShift gives you a clean, consistent API on top of those capabilities, and tells you exactly when it's time to move on.
+PostgreSQL already handles full-text search, job queues, pub/sub messaging, query result caching, and vector search natively. PgShift gives you a clean, consistent API on top of those capabilities, and tells you exactly when it is time to move on.
 
 <CardGrid>
   <Card title="Search" icon="magnifier">
@@ -128,6 +128,35 @@ PostgreSQL already handles full-text search, job queues, pub/sub messaging, and 
     })
     ```
   </TabItem>
+  <TabItem label="Vector">
+    ```bash
+    npm install @pgshift/vector
+    ```
+
+    ```ts
+    import { createClient } from '@pgshift/vector'
+
+    const db = createClient({ url: process.env.DATABASE_URL })
+
+    await db.vector('documents').index({
+      dimensions: 1536,
+      metric: 'cosine',
+    })
+
+    await db.vector('documents').upsert('1', {
+      embedding: await embed('Getting started with PgShift'),
+      data: { title: 'Getting started', userId: '123' },
+    })
+
+    // Hybrid search — vector similarity + relational filter in one query
+    const results = await db.vector('documents').query({
+      embedding: await embed('how to install pgshift'),
+      topK: 5,
+      filters: { userId: '123' },
+      minScore: 0.7,
+    })
+    ```
+  </TabItem>
   <TabItem label="Cron">
     ```bash
     npm install @pgshift/cron @pgshift/queue
@@ -137,44 +166,20 @@ PostgreSQL already handles full-text search, job queues, pub/sub messaging, and 
     import { createClient as createCronClient, schedule } from '@pgshift/cron'
     import { createClient as createQueueClient } from '@pgshift/queue'
 
-    const cron = createCronClient({
-      url: process.env.DATABASE_URL,
-      queue: 'tasks',
-    })
-    // Ensure pg_cron extension is installed
-    await cron.cron.setup()
+    const cron = createCronClient({ url: process.env.DATABASE_URL, queue: 'tasks' })
+    const queue = createQueueClient({ url: process.env.DATABASE_URL })
 
-    const queue = createQueueClient({ url: DATABASE_URL })
-    // Setup the queue table
+    await cron.cron.setup()
     await queue.queue('tasks').setup()
 
-    // Every Monday at 8am — send weekly digest
     await cron.cron('weekly-digest').schedule(
       schedule.weekly({ day: 'monday', hour: 8 }),
       { payload: { type: 'weekly-digest' } },
     )
 
-    // Every 5 minutes
-    await cron.cron('heartbeat').schedule('*/5 * * * *', {
-      payload: { type: 'heartbeat' },
-    })
-
-    // Worker processes jobs when they fire
     await queue.queue('tasks').process(async (job) => {
-      const { type } = job.payload
-
-      switch (type) {
-        case 'weekly-digest':
-          await sendWeeklyDigest()
-          break
-
-        case 'heartbeat':
-          await ping()
-          break
-
-        default:
-          console.log(`Unknown job type: ${type}`)
-      }
+      const { type } = job.payload as { type: string }
+      if (type === 'weekly-digest') await sendWeeklyDigest()
     })
     ```
   </TabItem>
@@ -182,7 +187,7 @@ PostgreSQL already handles full-text search, job queues, pub/sub messaging, and 
 
 ## Shift when you must
 
-PgShift tracks latency for every operation. When a module consistently hits the limits of what Postgres can handle efficiently, it emits a migration hint, telling you exactly when it's time to move to Elasticsearch, Redis, or Kafka.
+PgShift tracks latency for every operation. When a module consistently hits the limits of what Postgres can handle efficiently, it emits a migration hint, telling you exactly when it is time to move to Elasticsearch, Redis, Pinecone, or Kafka.
 
 ```ts
 const db = createClient({
@@ -194,4 +199,4 @@ const db = createClient({
 })
 ```
 
-When the time comes, the migration is infrastructure work, not application code. Your `db.search().query()`, `db.cache().get()`, and `db.queue().push()` calls stay exactly the same.
+When the time comes, the migration is infrastructure work, not application code. Your `db.search().query()`, `db.cache().get()`, `db.queue().push()`, and `db.vector().query()` calls stay exactly the same.
