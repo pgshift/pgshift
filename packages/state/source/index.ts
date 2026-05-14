@@ -22,7 +22,7 @@ export type {
   StateDefinition,
   StateHistoryEntry,
   StateNormalizeConfig,
-  StatePendingApproval
+  StatePendingApproval,
 } from '@pgshift/core'
 
 export interface CreateStateClientOptions {
