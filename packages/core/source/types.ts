@@ -23,7 +23,13 @@ export interface PgShiftConfig {
 // Metrics & migration hints
 // ---------------------------------------------------------------------------
 
-export type PgShiftModule = 'search' | 'cache' | 'queue' | 'cron' | 'vector'
+export type PgShiftModule =
+  | 'search'
+  | 'cache'
+  | 'queue'
+  | 'cron'
+  | 'vector'
+  | 'state'
 
 export type MetricUnit = 'ms' | 'count' | 'per_second' | 'bytes'
 
@@ -41,7 +47,7 @@ export interface MigrationHint {
   currentAdapter: string
   suggestedAdapter: string
   reason: string
-  /** 0–1 urgency score */
+  /** 0-1 urgency score */
   urgency: number
   learnMoreUrl?: string
 }
@@ -111,6 +117,8 @@ export interface CacheAdapter {
 // Queue
 // ---------------------------------------------------------------------------
 
+export type QueueJobStatus = 'pending' | 'processing' | 'done' | 'failed'
+
 export interface QueueJobOptions {
   delay?: number
   retries?: number
@@ -121,9 +129,8 @@ export interface QueueJobOptions {
 
 export interface QueueJob<T = unknown> {
   id: string
-  name: string
   payload: T
-  status: string
+  status: QueueJobStatus
   priority: number
   attempts: number
   maxRetries: number
@@ -160,9 +167,7 @@ export interface QueueAdapter {
 // ---------------------------------------------------------------------------
 
 export interface CronJobOptions {
-  /** Target queue name. Defaults to the queue configured in createClient. */
   queue?: string
-  /** Payload inserted into the queue when the job fires. */
   payload?: Record<string, unknown>
 }
 
@@ -224,5 +229,83 @@ export interface VectorAdapter {
     options: VectorQueryOptions,
   ): Awaitable<VectorResult<T>[]>
   delete(entity: string, id: string): Awaitable<void>
+  teardown?(): Awaitable<void>
+}
+
+// ---------------------------------------------------------------------------
+// State
+// ---------------------------------------------------------------------------
+
+export interface StateDefinition {
+  /** The column that holds the state value */
+  field: string
+  /** All valid state values */
+  states: string[]
+  /** Allowed transitions per state. Empty array means terminal state. */
+  transitions: Record<string, string[]>
+  /** Initial state value for new rows */
+  initial?: string
+}
+
+export type StateNormalizeConfig = Record<string, string>
+
+export interface StateAuditConfig {
+  /** Fields to track. Defaults to all columns. */
+  track?: string[]
+}
+
+export interface StateConsensusConfig {
+  /** The target transition that requires consensus */
+  transition: string
+  /** Number of approvals required */
+  require: number
+  /** Optional list of roles allowed to approve */
+  roles?: string[]
+  /** Optional SQL condition — consensus only applies when this evaluates to true */
+  when?: string
+}
+
+export interface StateApprovalOptions {
+  /** ID of the approver */
+  by: string
+  /** Optional role of the approver */
+  role?: string
+}
+
+export interface StateHistoryEntry {
+  id: string
+  entityId: string
+  field: string
+  fromValue: string | null
+  toValue: string
+  changedBy: string | null
+  changedAt: Date
+}
+
+export interface StatePendingApproval {
+  id: string
+  entityId: string
+  transition: string
+  approvedBy: string
+  role: string | null
+  approvedAt: Date
+}
+
+export interface StateAdapter {
+  readonly name: string
+  define(table: string, config: StateDefinition): Awaitable<void>
+  normalize(table: string, config: StateNormalizeConfig): Awaitable<void>
+  audit(table: string, config?: StateAuditConfig): Awaitable<void>
+  consensus(table: string, config: StateConsensusConfig): Awaitable<void>
+  approve(
+    table: string,
+    entityId: string,
+    options: StateApprovalOptions,
+  ): Awaitable<void>
+  history(table: string, entityId: string): Awaitable<StateHistoryEntry[]>
+  pendingApprovals(
+    table: string,
+    entityId: string,
+  ): Awaitable<StatePendingApproval[]>
   teardown?(): Awaitable<void>
 }
