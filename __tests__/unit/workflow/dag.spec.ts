@@ -9,13 +9,13 @@ import {
 describe('readySteps', () => {
   it('returns steps with no dependencies when all are pending', () => {
     const dag = {
-      fetch_data:   [],
-      validate:     [],
+      fetch_data: [],
+      validate: [],
       process_data: ['fetch_data', 'validate'],
     }
     const statuses = {
-      fetch_data:   'pending',
-      validate:     'pending',
+      fetch_data: 'pending',
+      validate: 'pending',
       process_data: 'pending',
     }
 
@@ -24,14 +24,14 @@ describe('readySteps', () => {
 
   it('returns a step when all its dependencies are completed', () => {
     const dag = {
-      fetch_data:   [],
+      fetch_data: [],
       process_data: ['fetch_data'],
-      send_email:   ['process_data'],
+      send_email: ['process_data'],
     }
     const statuses = {
-      fetch_data:   'completed',
+      fetch_data: 'completed',
       process_data: 'pending',
-      send_email:   'pending',
+      send_email: 'pending',
     }
 
     expect(readySteps(dag, statuses)).toEqual(['process_data'])
@@ -79,7 +79,11 @@ describe('readySteps', () => {
       step_d: 'pending',
     }
 
-    expect(readySteps(dag, statuses).sort()).toEqual(['step_a', 'step_b', 'step_c'])
+    expect(readySteps(dag, statuses).sort()).toEqual([
+      'step_a',
+      'step_b',
+      'step_c',
+    ])
   })
 
   it('returns empty when all steps are completed', () => {
@@ -91,21 +95,21 @@ describe('readySteps', () => {
 
   it('handles a complex DAG correctly', () => {
     const dag = {
-      validate_stock:   [],
-      validate_fraud:   [],
-      charge_card:      ['validate_stock', 'validate_fraud'],
-      emit_invoice:     ['charge_card'],
-      send_email:       ['emit_invoice'],
+      validate_stock: [],
+      validate_fraud: [],
+      charge_card: ['validate_stock', 'validate_fraud'],
+      emit_invoice: ['charge_card'],
+      send_email: ['emit_invoice'],
       update_analytics: ['emit_invoice'],
     }
 
     // After validate_stock and validate_fraud complete
     const statuses = {
-      validate_stock:   'completed',
-      validate_fraud:   'completed',
-      charge_card:      'pending',
-      emit_invoice:     'pending',
-      send_email:       'pending',
+      validate_stock: 'completed',
+      validate_fraud: 'completed',
+      charge_card: 'pending',
+      emit_invoice: 'pending',
+      send_email: 'pending',
       update_analytics: 'pending',
     }
 
@@ -191,9 +195,9 @@ describe('compensationOrder', () => {
   it('returns completed steps with compensation in reverse topological order', () => {
     const dag = {
       validate: [],
-      charge:   ['validate'],
-      invoice:  ['charge'],
-      email:    ['invoice'],
+      charge: ['validate'],
+      invoice: ['charge'],
+      email: ['invoice'],
     }
 
     const completedSteps = ['validate', 'charge', 'invoice']
@@ -203,8 +207,8 @@ describe('compensationOrder', () => {
 
     // invoice was completed after charge, so it should be compensated first
     expect(order.indexOf('invoice')).toBeLessThan(order.indexOf('charge'))
-    expect(order).not.toContain('validate')  // no compensation defined
-    expect(order).not.toContain('email')     // not completed
+    expect(order).not.toContain('validate') // no compensation defined
+    expect(order).not.toContain('email') // not completed
   })
 
   it('returns empty when no completed steps have compensation', () => {
@@ -223,14 +227,18 @@ describe('compensationOrder', () => {
 
   it('handles parallel steps in compensation', () => {
     const dag = {
-      start:     [],
+      start: [],
       parallel_a: ['start'],
       parallel_b: ['start'],
-      finish:    ['parallel_a', 'parallel_b'],
+      finish: ['parallel_a', 'parallel_b'],
     }
 
     const completedSteps = ['start', 'parallel_a', 'parallel_b', 'finish']
-    const stepsWithCompensation = new Set(['parallel_a', 'parallel_b', 'finish'])
+    const stepsWithCompensation = new Set([
+      'parallel_a',
+      'parallel_b',
+      'finish',
+    ])
 
     const order = compensationOrder(dag, completedSteps, stepsWithCompensation)
 
