@@ -2,6 +2,8 @@ import type { PgShiftConfig, StateAdapter } from '@pgshift/core'
 import { createPostgresStateAdapter as adapterCreatePostgresStateAdapter } from './adapter'
 import { PgPool } from './pool'
 
+export { normalizers } from './normalizer'
+
 /**
  * Internal factory used by @pgshift/state.
  * Not intended to be imported directly by application code.
