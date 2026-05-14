@@ -1,0 +1,22 @@
+services:
+  postgres:
+    build:
+      context: __tests__
+      dockerfile: Dockerfile
+    container_name: pgshift-test-postgres
+    environment:
+      POSTGRES_PASSWORD: pgshift_test
+      POSTGRES_DB: pgshift_test
+    ports:
+      - '5499:5432'
+    command:
+      - postgres
+      - -c
+      - shared_preload_libraries=pg_cron
+      - -c
+      - cron.database_name=pgshift_test
+    healthcheck:
+      test: ['CMD-SHELL', 'pg_isready -U postgres']
+      interval: 5s
+      timeout: 5s
+      retries: 10
