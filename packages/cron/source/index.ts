@@ -53,9 +53,7 @@ export interface CreateCronClientOptions {
  */
 export function createClient(
   options: CreateCronClientOptions,
-): PgShiftClient & {
-  cron: CronApi
-} {
+): Omit<PgShiftClient, 'cron'> & { cron: CronApi } {
   const config: PgShiftConfig = {
     url: options.url,
     max: options.max,
@@ -69,7 +67,7 @@ export function createClient(
     metrics: options.metrics,
     onMigrationHint: options.onMigrationHint,
     adapters: {},
-  }) as PgShiftClient & { cron: CronApi }
+  }) as unknown as Omit<PgShiftClient, 'cron'> & { cron: CronApi }
 
   client.cron = buildCronApi(adapter)
 

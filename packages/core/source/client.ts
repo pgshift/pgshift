@@ -64,9 +64,12 @@ export class PgShiftClient {
   // ---------------------------------------------------------------------------
   // search(entity) — returns a SearchHandle for the given entity
   // ---------------------------------------------------------------------------
-    search(entity: string): SearchHandle {
+  search(entity: string): SearchHandle {
     if (!this._search.has(entity)) {
-      this._search.set(entity, new SearchHandle(entity, this.getSearchAdapter(), this.metrics))
+      this._search.set(
+        entity,
+        new SearchHandle(entity, this.getSearchAdapter(), this.metrics),
+      )
     }
     return this._search.get(entity)!
   }
@@ -77,21 +80,30 @@ export class PgShiftClient {
 
   cache(name: string): CacheHandle {
     if (!this._cache.has(name)) {
-      this._cache.set(name, new CacheHandle(name, this.getCacheAdapter(), this.metrics))
+      this._cache.set(
+        name,
+        new CacheHandle(name, this.getCacheAdapter(), this.metrics),
+      )
     }
     return this._cache.get(name)!
   }
 
   queue(name: string): QueueHandle {
     if (!this._queue.has(name)) {
-      this._queue.set(name, new QueueHandle(name, this.getQueueAdapter(), this.metrics))
+      this._queue.set(
+        name,
+        new QueueHandle(name, this.getQueueAdapter(), this.metrics),
+      )
     }
     return this._queue.get(name)!
   }
 
   vector(entity: string): VectorHandle {
     if (!this._vector.has(entity)) {
-      this._vector.set(entity, new VectorHandle(entity, this.getVectorAdapter()))
+      this._vector.set(
+        entity,
+        new VectorHandle(entity, this.getVectorAdapter()),
+      )
     }
     return this._vector.get(entity)!
   }
@@ -103,7 +115,10 @@ export class PgShiftClient {
   private getSearchAdapter(): SearchAdapter {
     if (!this._searchAdapter) {
       const factory = this.opts.adapters?.search
-      if (!factory) throw new Error('[PgShift] No search adapter configured. Install @pgshift/search.')
+      if (!factory)
+        throw new Error(
+          '[PgShift] No search adapter configured. Install @pgshift/search.',
+        )
       this._searchAdapter = factory()
     }
     return this._searchAdapter
@@ -112,7 +127,10 @@ export class PgShiftClient {
   private getCacheAdapter(): CacheAdapter {
     if (!this._cacheAdapter) {
       const factory = this.opts.adapters?.cache
-      if (!factory) throw new Error('[PgShift] No cache adapter configured. Install @pgshift/cache.')
+      if (!factory)
+        throw new Error(
+          '[PgShift] No cache adapter configured. Install @pgshift/cache.',
+        )
       this._cacheAdapter = factory()
     }
     return this._cacheAdapter
@@ -121,7 +139,10 @@ export class PgShiftClient {
   private getQueueAdapter(): QueueAdapter {
     if (!this._queueAdapter) {
       const factory = this.opts.adapters?.queue
-      if (!factory) throw new Error('[PgShift] No queue adapter configured. Install @pgshift/queue.')
+      if (!factory)
+        throw new Error(
+          '[PgShift] No queue adapter configured. Install @pgshift/queue.',
+        )
       this._queueAdapter = factory()
     }
     return this._queueAdapter
@@ -130,7 +151,10 @@ export class PgShiftClient {
   private getVectorAdapter(): VectorAdapter {
     if (!this._vectorAdapter) {
       const factory = this.opts.adapters?.vector
-      if (!factory) throw new Error('[PgShift] No vector adapter configured. Install @pgshift/vector.')
+      if (!factory)
+        throw new Error(
+          '[PgShift] No vector adapter configured. Install @pgshift/vector.',
+        )
       this._vectorAdapter = factory()
     }
     return this._vectorAdapter
@@ -139,7 +163,10 @@ export class PgShiftClient {
   private getCronAdapter(): CronAdapter {
     if (!this._cronAdapter) {
       const factory = this.opts.adapters?.cron
-      if (!factory) throw new Error('[PgShift] No cron adapter configured. Install @pgshift/cron.')
+      if (!factory)
+        throw new Error(
+          '[PgShift] No cron adapter configured. Install @pgshift/cron.',
+        )
       this._cronAdapter = factory()
     }
     return this._cronAdapter
@@ -173,7 +200,10 @@ class SearchHandle {
     return this.adapter.upsert(this.entity, id, data)
   }
 
-  async query<T = Record<string, unknown>>(term: string, options?: SearchQueryOptions): Promise<SearchResult<T>[]> {
+  async query<T = Record<string, unknown>>(
+    term: string,
+    options?: SearchQueryOptions,
+  ): Promise<SearchResult<T>[]> {
     const start = Date.now()
     const results = await this.adapter.query<T>(this.entity, term, options)
     this.metrics?.record({
@@ -243,11 +273,16 @@ class QueueHandle {
     return this.adapter.ensureQueue(this.name, options)
   }
 
-  async push<T = unknown>(payload: T, options?: QueueJobOptions): Promise<string> {
+  async push<T = unknown>(
+    payload: T,
+    options?: QueueJobOptions,
+  ): Promise<string> {
     return this.adapter.push<T>(this.name, payload, options)
   }
 
-  async process<T = unknown>(handler: (job: QueueJob<T>) => Promise<void>): Promise<void> {
+  async process<T = unknown>(
+    handler: (job: QueueJob<T>) => Promise<void>,
+  ): Promise<void> {
     return this.adapter.process<T>(this.name, handler)
   }
 
@@ -278,7 +313,9 @@ class VectorHandle {
     return this.adapter.upsert(this.entity, id, data)
   }
 
-  async query<T = Record<string, unknown>>(options: VectorQueryOptions): Promise<VectorResult<T>[]> {
+  async query<T = Record<string, unknown>>(
+    options: VectorQueryOptions,
+  ): Promise<VectorResult<T>[]> {
     return this.adapter.query<T>(this.entity, options)
   }
 
