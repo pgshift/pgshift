@@ -28,7 +28,7 @@ describe('executor logic — step dispatching', () => {
       }
 
       const ready = readySteps(dag, initialStatuses)
-      expect(ready.sort()).toEqual(['validate_stock', 'validate_fraud'])
+      expect(ready.sort()).toEqual(['validate_fraud', 'validate_stock'])
     })
 
     it('unblocks a step only after all dependencies complete', () => {
