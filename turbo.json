@@ -13,6 +13,9 @@
     },
     "format": {
       "cache": false
+    },
+    "lint": {
+      "cache": false
     }
   }
 }

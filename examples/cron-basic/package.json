@@ -5,7 +5,8 @@
   "type": "module",
   "scripts": {
     "dev": "tsx index.ts",
-    "format": "biome format --write ."
+    "format": "biome format --write .",
+    "lint": "biome lint ."
   },
   "dependencies": {
     "@pgshift/cron": "*",

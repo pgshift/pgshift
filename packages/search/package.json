@@ -22,7 +22,8 @@
   ],
   "scripts": {
     "build": "tsdown",
-    "format": "biome format --write ."
+    "format": "biome format --write .",
+    "lint": "biome lint ."
   },
   "dependencies": {
     "@pgshift/adapter-search-postgres": "*",
