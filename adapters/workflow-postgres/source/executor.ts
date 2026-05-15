@@ -157,7 +157,7 @@ async function dispatchStep(
     const error = err instanceof Error ? err.message : String(err)
     const maxRetries = config.retries ?? 3
 
-    if (claimed.attempts + 1 >= maxRetries) {
+    if (claimed.attempts >= maxRetries) {
       await pool.query(
         `UPDATE _pgshift_workflow_steps
          SET status = 'failed', error = $1, locked_at = NULL, locked_by = NULL

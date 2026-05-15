@@ -38,7 +38,7 @@ export async function compensateRun(
     output: Record<string, unknown> | null
   }>(
     `SELECT step, output FROM _pgshift_workflow_steps
-     WHERE run_id = $1 AND status = 'completed'`,
+     WHERE run_id = $1 AND status IN ('completed', 'failed')`,
     [runId],
   )
 
