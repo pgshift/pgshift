@@ -1,0 +1,32 @@
+{
+  "$schema": "https://unpkg.com/@changesets/config@3.0.0/schema.json",
+  "changelog": "@changesets/cli/changelog",
+  "commit": false,
+  "fixed": [],
+  "linked": [],
+  "access": "public",
+  "baseBranch": "main",
+  "updateInternalDependencies": "patch",
+  "ignore": [
+    "@pgshift/example-search-basic",
+    "@pgshift/example-search-basic-with-comments",
+    "@pgshift/example-search-ranking",
+    "@pgshift/example-cache-basic",
+    "@pgshift/example-cache-benchmark",
+    "@pgshift/example-queue-basic",
+    "@pgshift/example-queue-dead-letter",
+    "@pgshift/example-queue-delay",
+    "@pgshift/example-queue-priority",
+    "@pgshift/example-queue-retry",
+    "@pgshift/example-queue-stats",
+    "@pgshift/example-cron-basic",
+    "@pgshift/example-vector-basic",
+    "@pgshift/example-state-basic",
+    "@pgshift/example-state-normalize",
+    "@pgshift/example-state-consensus",
+    "@pgshift/example-workflow-basic",
+    "@pgshift/example-workflow-ecommerce",
+    "@pgshift/__tests__",
+    "@pgshift/docs"
+  ]
+}
