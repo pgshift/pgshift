@@ -3,8 +3,11 @@ import { defineConfig } from 'astro/config'
 import { fileURLToPath } from 'node:url'
 import starlightThemeFlexoki from 'starlight-theme-flexoki'
 
+import vercel from '@astrojs/vercel'
+
 export default defineConfig({
   srcDir: fileURLToPath(new URL('./source', import.meta.url)),
+  site: 'https://pgshift.dev',
   integrations: [
     starlight({
       plugins: [starlightThemeFlexoki()],
@@ -88,4 +91,5 @@ export default defineConfig({
       ],
     }),
   ],
+  adapter: vercel(),
 })
