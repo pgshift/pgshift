@@ -3,6 +3,7 @@
   "version": "0.1.0",
   "description": "PgShift cron — scheduled jobs via pg_cron, delivered through @pgshift/queue.",
   "type": "module",
+  "license": "MIT",
   "homepage": "https://pgshift-docs.vercel.app/",
   "repository": {
     "type": "git",
