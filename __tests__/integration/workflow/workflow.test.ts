@@ -285,21 +285,21 @@ describe('workflow integration', () => {
       const contexts: unknown[] = []
 
       await db.workflow('test-workflow').handlers({
-        handleA: async (ctx: any) => {
+        handleA: async (ctx) => {
           contexts.push({ step: ctx.step, input: ctx.input })
           return { fromA: 'output-a' }
         },
-        handleB: async (ctx: any) => {
+        handleB: async (ctx) => {
           contexts.push({
             step: ctx.step,
-            previousA: ctx.previousSteps['step_a'],
+            previousA: ctx.previousSteps.step_a,
           })
           return { fromB: 'output-b' }
         },
-        handleC: async (ctx: any) => {
+        handleC: async (ctx) => {
           contexts.push({
             step: ctx.step,
-            previousB: ctx.previousSteps['step_b'],
+            previousB: ctx.previousSteps.step_b,
           })
           return {}
         },
@@ -339,12 +339,12 @@ describe('workflow integration', () => {
       const startTimes: Record<string, number> = {}
 
       await db.workflow('order-fulfillment').handlers({
-        validateStock: async (ctx: any) => {
-          startTimes['validate_stock'] = Date.now()
+        validateStock: async () => {
+          startTimes.validate_stock = Date.now()
           await sleep(100)
         },
-        validateFraud: async (ctx: any) => {
-          startTimes['validate_fraud'] = Date.now()
+        validateFraud: async () => {
+          startTimes.validate_fraud = Date.now()
           await sleep(100)
         },
         chargeCard: async () => {},
@@ -362,7 +362,7 @@ describe('workflow integration', () => {
 
       // Both root steps should have started at roughly the same time
       const diff = Math.abs(
-        startTimes['validate_stock']! - startTimes['validate_fraud']!,
+        (startTimes.validate_stock ?? 0) - (startTimes.validate_fraud ?? 0),
       )
       expect(diff).toBeLessThan(500) // within 500ms of each other
     })

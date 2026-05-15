@@ -76,12 +76,15 @@ export async function advanceRun(
   const ready = readySteps(dag, stepStatuses)
 
   for (const step of ready) {
+    const stepConfig = stepsConfig[step]
+    if (!stepConfig) continue
+
     await dispatchStep(
       pool,
       runId,
       workflowName,
       step,
-      stepsConfig[step]!,
+      stepConfig,
       handlers,
       input,
       previousOutputs,
@@ -92,7 +95,7 @@ export async function advanceRun(
 async function dispatchStep(
   pool: PgPool,
   runId: string,
-  workflowName: string,
+  _workflowName: string,
   step: string,
   config: WorkflowStepConfig,
   handlers: Record<string, (ctx: WorkflowContext) => Promise<unknown>>,
@@ -109,17 +112,18 @@ async function dispatchStep(
       [runId, step],
     )
 
-    if (result.rows.length === 0) return null
+    const row = result.rows[0]
+    if (!row) return null
 
     await client.query(
       `UPDATE _pgshift_workflow_steps
        SET status = 'running', locked_at = NOW(), locked_by = $1,
            started_at = NOW(), attempts = attempts + 1
        WHERE id = $2`,
-      [WORKER_ID, result.rows[0]!.id],
+      [WORKER_ID, row.id],
     )
 
-    return result.rows[0]!
+    return row
   })
 
   if (!claimed) return

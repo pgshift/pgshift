@@ -109,10 +109,12 @@ export function createClient(
   }) as PgShiftClient & { state: (table: string) => StateHandle }
 
   client.state = (table: string): StateHandle => {
-    if (!handles.has(table)) {
-      handles.set(table, new StateHandle(table, adapter))
+    let handle = handles.get(table)
+    if (!handle) {
+      handle = new StateHandle(table, adapter)
+      handles.set(table, handle)
     }
-    return handles.get(table)!
+    return handle
   }
 
   const originalDestroy = client.destroy.bind(client)

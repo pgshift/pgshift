@@ -12,6 +12,9 @@
     "includes": [
       "**",
       "!dist/**",
+      "!.turbo/**",
+      "!.astro/**",
+      "!.vercel/**",
       "!node_modules/**",
       "!coverage/**",
       "!**/*.min.*"

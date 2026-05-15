@@ -65,13 +65,12 @@ export class PgShiftClient {
   // search(entity) — returns a SearchHandle for the given entity
   // ---------------------------------------------------------------------------
   search(entity: string): SearchHandle {
-    if (!this._search.has(entity)) {
-      this._search.set(
-        entity,
-        new SearchHandle(entity, this.getSearchAdapter(), this.metrics),
-      )
+    let handle = this._search.get(entity)
+    if (!handle) {
+      handle = new SearchHandle(entity, this.getSearchAdapter(), this.metrics)
+      this._search.set(entity, handle)
     }
-    return this._search.get(entity)!
+    return handle
   }
 
   // ---------------------------------------------------------------------------
@@ -79,33 +78,30 @@ export class PgShiftClient {
   // ---------------------------------------------------------------------------
 
   cache(name: string): CacheHandle {
-    if (!this._cache.has(name)) {
-      this._cache.set(
-        name,
-        new CacheHandle(name, this.getCacheAdapter(), this.metrics),
-      )
+    let handle = this._cache.get(name)
+    if (!handle) {
+      handle = new CacheHandle(name, this.getCacheAdapter(), this.metrics)
+      this._cache.set(name, handle)
     }
-    return this._cache.get(name)!
+    return handle
   }
 
   queue(name: string): QueueHandle {
-    if (!this._queue.has(name)) {
-      this._queue.set(
-        name,
-        new QueueHandle(name, this.getQueueAdapter(), this.metrics),
-      )
+    let handle = this._queue.get(name)
+    if (!handle) {
+      handle = new QueueHandle(name, this.getQueueAdapter())
+      this._queue.set(name, handle)
     }
-    return this._queue.get(name)!
+    return handle
   }
 
   vector(entity: string): VectorHandle {
-    if (!this._vector.has(entity)) {
-      this._vector.set(
-        entity,
-        new VectorHandle(entity, this.getVectorAdapter()),
-      )
+    let handle = this._vector.get(entity)
+    if (!handle) {
+      handle = new VectorHandle(entity, this.getVectorAdapter())
+      this._vector.set(entity, handle)
     }
-    return this._vector.get(entity)!
+    return handle
   }
 
   get cron(): CronNamespace {
@@ -266,7 +262,6 @@ class QueueHandle {
   constructor(
     private readonly name: string,
     private readonly adapter: QueueAdapter,
-    private readonly metrics: MetricsCollector | undefined,
   ) {}
 
   async setup(options?: QueueJobOptions): Promise<void> {

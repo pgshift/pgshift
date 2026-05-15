@@ -95,9 +95,9 @@ console.log('Large loan approved after 2 approvals.')
 // Check pending approvals
 const pending = await db.state('loans').pendingApprovals(largeLoan)
 console.log(`\nApprovals recorded: ${pending.length}`)
-pending.forEach((p) =>
-  console.log(`  ${p.approvedBy} (${p.role}) at ${p.approvedAt.toISOString()}`),
-)
+for (const p of pending) {
+  console.log(`  ${p.approvedBy} (${p.role}) at ${p.approvedAt.toISOString()}`)
+}
 
 await db.destroy()
 await pool.end()

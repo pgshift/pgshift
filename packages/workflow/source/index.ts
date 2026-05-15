@@ -1,4 +1,5 @@
 import { createPostgresWorkflowAdapter } from '@pgshift/adapter-workflow-postgres'
+import type { WorkflowContext } from '@pgshift/adapter-workflow-postgres'
 import type {
   MigrationHint,
   PgShiftConfig,
@@ -96,10 +97,12 @@ export function createClient(
   }) as PgShiftClient & { workflow: (name: string) => WorkflowHandle }
 
   client.workflow = (name: string): WorkflowHandle => {
-    if (!handles.has(name)) {
-      handles.set(name, new WorkflowHandle(name, adapter))
+    let handle = handles.get(name)
+    if (!handle) {
+      handle = new WorkflowHandle(name, adapter)
+      handles.set(name, handle)
     }
-    return handles.get(name)!
+    return handle
   }
 
   const originalDestroy = client.destroy.bind(client)
@@ -127,9 +130,12 @@ class WorkflowHandle {
   }
 
   async handlers(
-    handlers: Record<string, (ctx: unknown) => Promise<unknown>>,
+    handlers: Record<string, (ctx: WorkflowContext) => Promise<unknown>>,
   ): Promise<WorkflowHandle> {
-    await this.adapter.handlers(this.name, handlers)
+    await this.adapter.handlers(
+      this.name,
+      handlers as Record<string, (ctx: unknown) => Promise<unknown>>,
+    )
     return this
   }
 

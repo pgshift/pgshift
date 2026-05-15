@@ -19,7 +19,7 @@ import type { PgPool } from './pool'
 export async function compensateRun(
   pool: PgPool,
   runId: string,
-  workflowName: string,
+  _workflowName: string,
   dag: DagConfig,
   stepsConfig: Record<string, WorkflowStepConfig>,
   handlers: Record<string, (ctx: WorkflowContext) => Promise<unknown>>,

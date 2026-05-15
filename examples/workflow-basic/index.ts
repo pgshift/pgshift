@@ -1,4 +1,4 @@
-import { createClient } from '@pgshift/workflow'
+import { type WorkflowRunStatus, createClient } from '@pgshift/workflow'
 
 const DATABASE_URL =
   'postgres://postgres:pgshift_test@localhost:5499/pgshift_test'
@@ -35,7 +35,7 @@ function logStep(step: string, message: string) {
   console.log(` ${icons.running}  ${time}  ${step.padEnd(16)} ${message}`)
 }
 
-function renderStatus(status: any) {
+function renderStatus(status: WorkflowRunStatus) {
   clearScreen()
 
   banner('PGShift Workflow Monitor')
@@ -47,12 +47,14 @@ function renderStatus(status: any) {
 
   console.log('\n')
 
-  const rows = Object.entries(status.steps).map(([step, s]: any) => ({
+  const rows = Object.entries(status.steps).map(([step, s]) => ({
     Step: step,
     Status: `${icons[s.status as keyof typeof icons] || '•'} ${s.status}`,
     Attempts: s.attempts ?? '-',
     Started: s.startedAt ? new Date(s.startedAt).toLocaleTimeString() : '-',
-    Finished: s.finishedAt ? new Date(s.finishedAt).toLocaleTimeString() : '-',
+    Finished: s.completedAt
+      ? new Date(s.completedAt).toLocaleTimeString()
+      : '-',
   }))
 
   console.table(rows)
@@ -126,7 +128,7 @@ await db.workflow('send-report').define({
 // ---------------------------------------------------------------------------
 
 await db.workflow('send-report').handlers({
-  fetchData: async (ctx: any) => {
+  fetchData: async (ctx) => {
     logStep(ctx.step, 'Fetching report data...')
     await sleep(1000)
 
@@ -136,8 +138,8 @@ await db.workflow('send-report').handlers({
     }
   },
 
-  generatePdf: async (ctx: any) => {
-    const { records } = ctx.previousSteps['fetch_data'] as {
+  generatePdf: async (ctx) => {
+    const { records } = ctx.previousSteps.fetch_data as {
       records: number
     }
 
@@ -151,12 +153,12 @@ await db.workflow('send-report').handlers({
     }
   },
 
-  cleanupPdf: async (ctx: any) => {
+  cleanupPdf: async (ctx) => {
     logStep(ctx.step, 'Compensating: deleting generated PDF...')
   },
 
-  uploadS3: async (ctx: any) => {
-    const { pdfPath } = ctx.previousSteps['generate_pdf'] as {
+  uploadS3: async (ctx) => {
+    const { pdfPath } = ctx.previousSteps.generate_pdf as {
       pdfPath: string
     }
 
@@ -169,12 +171,12 @@ await db.workflow('send-report').handlers({
     }
   },
 
-  deleteFromS3: async (ctx: any) => {
+  deleteFromS3: async (ctx) => {
     logStep(ctx.step, 'Compensating: deleting file from S3...')
   },
 
-  sendEmail: async (ctx: any) => {
-    const { s3Url } = ctx.previousSteps['upload_s3'] as {
+  sendEmail: async (ctx) => {
+    const { s3Url } = ctx.previousSteps.upload_s3 as {
       s3Url: string
     }
 
@@ -183,7 +185,7 @@ await db.workflow('send-report').handlers({
     await sleep(1000)
   },
 
-  logAudit: async (ctx: any) => {
+  logAudit: async (ctx) => {
     logStep(ctx.step, `Writing audit log for run ${ctx.runId}`)
 
     await sleep(500)

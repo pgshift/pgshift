@@ -212,7 +212,9 @@ describe('vector integration', () => {
       })
 
       // All results must meet the minimum score threshold
-      results.forEach((r) => expect(r.score).toBeGreaterThanOrEqual(0.99))
+      for (const r of results) {
+        expect(r.score).toBeGreaterThanOrEqual(0.99)
+      }
 
       await db.destroy()
     })

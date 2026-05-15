@@ -43,7 +43,9 @@ export function createPostgresQueueAdapter(pool: PgPool): QueueAdapter {
         [JSON.stringify(payload), priority, maxRetries, delayMs],
       )
 
-      return rows[0]!.id
+      const id = rows[0]?.id
+      if (!id) throw new Error('[PgShift] Failed to insert job.')
+      return id
     },
 
     // -------------------------------------------------------------------------
@@ -90,10 +92,10 @@ export function createPostgresQueueAdapter(pool: PgPool): QueueAdapter {
       }
 
       return {
-        pending: counts['pending'] ?? 0,
-        processing: counts['processing'] ?? 0,
-        done: counts['done'] ?? 0,
-        failed: counts['failed'] ?? 0,
+        pending: counts.pending ?? 0,
+        processing: counts.processing ?? 0,
+        done: counts.done ?? 0,
+        failed: counts.failed ?? 0,
       }
     },
 

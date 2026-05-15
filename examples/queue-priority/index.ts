@@ -38,4 +38,6 @@ await new Promise((r) => setTimeout(r, 2_000))
 await db.destroy()
 
 console.log('\nProcessed order:')
-processed.forEach((m, i) => console.log(`  ${i + 1}. ${m}`))
+for (let i = 0; i < processed.length; i++) {
+  console.log(`  ${i + 1}. ${processed[i]}`)
+}

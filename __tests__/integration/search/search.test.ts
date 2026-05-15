@@ -13,13 +13,15 @@ const INDEX_CONFIG = {
   fuzzy: true,
 }
 
+const PRODUCT_1 = {
+  id: '1',
+  name: 'Nike Air Max 90',
+  description: 'Classic sneaker with visible Air unit.',
+  category: 'shoes',
+}
+
 const PRODUCTS = [
-  {
-    id: '1',
-    name: 'Nike Air Max 90',
-    description: 'Classic sneaker with visible Air unit.',
-    category: 'shoes',
-  },
+  PRODUCT_1,
   {
     id: '2',
     name: 'Adidas Ultraboost',
@@ -130,7 +132,7 @@ describe('search integration', () => {
       const db = createClient({ url })
       await db.search('products').index(INDEX_CONFIG)
 
-      await db.search('products').upsert('1', PRODUCTS[0]!)
+      await db.search('products').upsert('1', PRODUCT_1)
 
       const { rows } = await pool.query(
         `SELECT id FROM ${schema}._pgshift_search_products WHERE id = '1'`,
@@ -181,7 +183,7 @@ describe('search integration', () => {
       const results = await db.search('products').query('air max')
 
       expect(results.length).toBeGreaterThan(0)
-      expect(results[0]!.id).toBe('1')
+      expect(results[0]?.id).toBe('1')
 
       await db.destroy()
     })
@@ -189,7 +191,7 @@ describe('search integration', () => {
     it('returns results with id, rank, and data fields', async () => {
       const db = createClient({ url })
       await db.search('products').index(INDEX_CONFIG)
-      await db.search('products').upsert('1', PRODUCTS[0]!)
+      await db.search('products').upsert('1', PRODUCT_1)
 
       const results = await db.search('products').query('nike')
 
@@ -203,7 +205,7 @@ describe('search integration', () => {
     it('returns empty array when no documents match', async () => {
       const db = createClient({ url })
       await db.search('products').index(INDEX_CONFIG)
-      await db.search('products').upsert('1', PRODUCTS[0]!)
+      await db.search('products').upsert('1', PRODUCT_1)
 
       const results = await db.search('products').query('zxqwerty')
 
@@ -247,12 +249,12 @@ describe('search integration', () => {
     it('matches with fuzzy query — typo tolerance', async () => {
       const db = createClient({ url })
       await db.search('products').index(INDEX_CONFIG)
-      await db.search('products').upsert('1', PRODUCTS[0]!)
+      await db.search('products').upsert('1', PRODUCT_1)
 
       const results = await db.search('products').query('maxx', { fuzzy: true })
 
       expect(results.length).toBeGreaterThan(0)
-      expect(results[0]!.id).toBe('1')
+      expect(results[0]?.id).toBe('1')
 
       await db.destroy()
     })
@@ -260,7 +262,7 @@ describe('search integration', () => {
     it('matches multi-word fuzzy query', async () => {
       const db = createClient({ url })
       await db.search('products').index(INDEX_CONFIG)
-      await db.search('products').upsert('1', PRODUCTS[0]!)
+      await db.search('products').upsert('1', PRODUCT_1)
 
       const results = await db
         .search('products')
@@ -290,7 +292,7 @@ describe('search integration', () => {
     it('removes a document from the search index', async () => {
       const db = createClient({ url })
       await db.search('products').index(INDEX_CONFIG)
-      await db.search('products').upsert('1', PRODUCTS[0]!)
+      await db.search('products').upsert('1', PRODUCT_1)
 
       await db.search('products').delete('1')
 

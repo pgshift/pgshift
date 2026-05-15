@@ -87,13 +87,15 @@ export function createPostgresWorkflowAdapter(pool: PgPool): WorkflowAdapter {
         [name],
       )
 
-      if (defRow.length === 0) {
+      const definition = defRow[0]
+
+      if (!definition) {
         throw new Error(
           `[PgShift] Workflow "${name}" has not been defined. Call db.workflow("${name}").define(...) first.`,
         )
       }
 
-      const { steps, dag } = defRow[0]!
+      const { steps } = definition
 
       const runRows = await pool.query<{ id: string }>(
         `INSERT INTO _pgshift_workflow_runs (workflow, input)
@@ -102,7 +104,9 @@ export function createPostgresWorkflowAdapter(pool: PgPool): WorkflowAdapter {
         [name, JSON.stringify(input)],
       )
 
-      const runId = runRows[0]!.id
+      const runRow = runRows[0]
+      if (!runRow) throw new Error('[PgShift] Failed to create workflow run.')
+      const runId = runRow.id
 
       // Create a pending step row for each step in the definition
       for (const [step, cfg] of Object.entries(steps)) {
@@ -133,11 +137,10 @@ export function createPostgresWorkflowAdapter(pool: PgPool): WorkflowAdapter {
         [runId],
       )
 
-      if (runRows.length === 0) {
+      const run = runRows[0]
+      if (!run) {
         throw new Error(`[PgShift] Workflow run "${runId}" not found.`)
       }
-
-      const run = runRows[0]!
 
       const stepRows = await pool.query<{
         step: string

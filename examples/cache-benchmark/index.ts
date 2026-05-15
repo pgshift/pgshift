@@ -28,15 +28,15 @@ function stats(latencies: number[]) {
   const sorted = [...latencies].sort((a, b) => a - b)
 
   const avg = latencies.reduce((s, v) => s + v, 0) / latencies.length
-  const p95 = sorted[Math.ceil(0.95 * sorted.length) - 1]!
-  const p99 = sorted[Math.ceil(0.99 * sorted.length) - 1]!
+  const p95 = sorted[Math.ceil(0.95 * sorted.length) - 1] ?? 0
+  const p99 = sorted[Math.ceil(0.99 * sorted.length) - 1] ?? 0
 
   return {
     avg: Number(avg.toFixed(2)),
     p95: Number(p95.toFixed(2)),
     p99: Number(p99.toFixed(2)),
-    min: Number(sorted[0]!.toFixed(2)),
-    max: Number(sorted[sorted.length - 1]!.toFixed(2)),
+    min: Number((sorted[0] ?? 0).toFixed(2)),
+    max: Number((sorted[sorted.length - 1] ?? 0).toFixed(2)),
   }
 }
 
