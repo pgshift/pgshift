@@ -1,0 +1,103 @@
+name: CI
+
+on:
+  push:
+    branches: [main]
+  pull_request:
+    branches: [main]
+
+concurrency:
+  group: ${{ github.workflow }}-${{ github.ref }}
+  cancel-in-progress: true
+
+jobs:
+  # ---------------------------------------------------------------------------
+  # Lint
+  # ---------------------------------------------------------------------------
+  lint:
+    name: Lint
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+
+      - uses: actions/setup-node@v4
+        with:
+          node-version: 20
+          cache: npm
+
+      - run: npm ci
+
+      - name: Format lint
+        run: npm run lint
+
+      - name: Build packages
+        run: npx turbo build
+
+  # ---------------------------------------------------------------------------
+  # Unit tests
+  # ---------------------------------------------------------------------------
+  unit:
+    name: Unit tests
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+
+      - uses: actions/setup-node@v4
+        with:
+          node-version: 20
+          cache: npm
+
+      - run: npm ci
+
+      - name: Build packages
+        run: npx turbo build
+
+      - name: Run unit tests
+        run: npm run test:unit --workspace=__tests__
+
+  # ---------------------------------------------------------------------------
+  # Integration tests — builds custom Postgres image with pgvector + pg_cron
+  # ---------------------------------------------------------------------------
+  integration:
+    name: Integration tests
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+
+      - uses: actions/setup-node@v4
+        with:
+          node-version: 20
+          cache: npm
+
+      - run: npm ci
+
+      - name: Build custom Postgres image
+        run: docker build -t pgshift-test-postgres ./__tests__
+
+      - name: Start Postgres
+        run: |
+          docker run -d \
+            --name pgshift-test-postgres \
+            -e POSTGRES_PASSWORD=pgshift_test \
+            -e POSTGRES_DB=pgshift_test \
+            -p 5499:5432 \
+            pgshift-test-postgres \
+            postgres \
+            -c shared_preload_libraries=pg_cron \
+            -c cron.database_name=pgshift_test
+
+      - name: Wait for Postgres
+        run: |
+          for i in $(seq 1 30); do
+            docker exec pgshift-test-postgres pg_isready -U postgres && break
+            sleep 1
+          done
+
+      - name: Build packages
+        run: npx turbo build
+
+      - name: Run integration tests
+        run: npm run test:integration --workspace=__tests__
+        env:
+          CI: true
+          TEST_DATABASE_URL: postgres://postgres:pgshift_test@localhost:5499/pgshift_test
