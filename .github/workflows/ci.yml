@@ -104,6 +104,7 @@ jobs:
 
   # ---------------------------------------------------------------------------
   # Detect docs changes — used by Vercel ignored build step
+  # Only runs on push to main
   # ---------------------------------------------------------------------------
   docs-changed:
     name: Docs changed
