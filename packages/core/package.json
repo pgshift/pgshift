@@ -3,7 +3,7 @@
   "version": "0.1.0",
   "description": "PgShift core — client, types, and adapter contracts.",
   "type": "module",
-  "homepage": "https://pgshift-docs.vercel.app/",
+  "homepage": "https://pgshift.dev/",
   "repository": {
     "type": "git",
     "url": "git+https://github.com/mkafonso/pgshift.git"

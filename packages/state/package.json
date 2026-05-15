@@ -4,7 +4,7 @@
   "description": "PgShift state — state machines, data normalization, audit logs, and consensus gates via PostgreSQL triggers.",
   "type": "module",
   "license": "MIT",
-  "homepage": "https://pgshift-docs.vercel.app/",
+  "homepage": "https://pgshift.dev/",
   "repository": {
     "type": "git",
     "url": "git+https://github.com/mkafonso/pgshift.git"

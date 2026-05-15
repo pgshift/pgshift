@@ -4,7 +4,7 @@
   "description": "PgShift workflow — DAG-based workflow orchestration with compensation via PostgreSQL.",
   "type": "module",
   "license": "MIT",
-  "homepage": "https://pgshift-docs.vercel.app/",
+  "homepage": "https://pgshift.dev/",
   "repository": {
     "type": "git",
     "url": "git+https://github.com/mkafonso/pgshift.git"
