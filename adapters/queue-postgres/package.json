@@ -3,6 +3,7 @@
   "description": "Internal PostgreSQL adapter for @pgshift/queue.",
   "version": "0.0.0",
   "type": "module",
+  "license": "MIT",
   "main": "./dist/index.mjs",
   "types": "./dist/index.d.mts",
   "exports": {
