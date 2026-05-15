@@ -2,12 +2,12 @@
 
 > Start with Postgres. Shift only when you must.
 
-PgShift is an open source infrastructure toolkit for Node.js applications backed by PostgreSQL. It provides a clean, consistent API for search, caching, queues, and realtime — all powered by the Postgres instance your application already uses.
+PgShift is an open source infrastructure toolkit for Node.js applications backed by PostgreSQL. It provides a clean, consistent API for search, caching, queues, vector search, workflow orchestration, and state enforcement — all powered by the Postgres instance your application already uses.
 
 ## Core concepts
 
-- **Modules** — each module (search, cache, queue, realtime) is an independent package with its own `createClient` function
-- **Adapters** — every module ships with a Postgres adapter included. Future adapters (Elasticsearch, Redis) share the same API contract
+- **Modules** — each module is an independent package with its own `createClient` function
+- **Adapters** — every module ships with a Postgres adapter included. Future adapters (Elasticsearch, Redis, Pinecone) share the same API contract
 - **Migration hints** — when a module consistently hits Postgres limits, PgShift emits a hint suggesting a specialized backend
 
 ## Packages
@@ -15,124 +15,241 @@ PgShift is an open source infrastructure toolkit for Node.js applications backed
 - `@pgshift/search` — full-text search via TSVector and pg_trgm
 - `@pgshift/cache` — query result caching via materialized views
 - `@pgshift/queue` — background job processing via SKIP LOCKED
+- `@pgshift/cron` — recurring job scheduling via pg_cron (requires `@pgshift/queue`)
+- `@pgshift/vector` — semantic search and hybrid search via pgvector and HNSW indexes
+- `@pgshift/state` — state machines, data normalization, audit logs, and consensus gates via triggers
+- `@pgshift/workflow` — DAG-based workflow orchestration with compensation via PostgreSQL
 
 ## Search API
 
 ```ts
-import { createClient } from '@pgshift/search'
+import { createClient } from "@pgshift/search"
 
 const db = createClient({ url: process.env.DATABASE_URL })
 
-await db.search('products').index({
-  fields: ['name', 'description', 'category'],
-  weights: { name: 'A', description: 'B', category: 'C' },
+await db.search("products").index({
+  fields: ["name", "description", "category"],
+  weights: { name: "A", description: "B", category: "C" },
   fuzzy: true,
-  language: 'english',
 })
 
-await db.search('products').upsert('1', {
-  name: 'Nike Air Max 90',
-  description: 'Classic sneaker.',
-  category: 'shoes',
+await db.search("products").upsert("1", {
+  name: "Nike Air Max 90",
+  description: "Classic sneaker.",
+  category: "shoes",
 })
 
-const results = await db.search('products').query('air max', {
+const results = await db.search("products").query("air max", {
   fuzzy: true,
-  filters: { category: 'shoes' },
+  filters: { category: "shoes" },
   limit: 20,
-  offset: 0,
 })
-// [{ id: '1', rank: 0.626, data: { name: 'Nike Air Max 90', ... } }]
+// [{ id: "1", rank: 0.626, data: { name: "Nike Air Max 90", ... } }]
 
-await db.search('products').delete('1')
-
+await db.search("products").delete("1")
 await db.destroy()
 ```
 
 ## Cache API
 
 ```ts
-import { createClient } from '@pgshift/cache'
+import { createClient } from "@pgshift/cache"
 
 const db = createClient({ url: process.env.DATABASE_URL })
 
-await db.cache('top_products').register({
-  query: `
-    SELECT id AS _pgshift_id, name, SUM(amount) AS revenue
-    FROM orders JOIN products USING (product_id)
-    GROUP BY id, name ORDER BY revenue DESC LIMIT 10
-  `,
+await db.cache("top_products").register({
+  query: "SELECT id AS _pgshift_id, name, SUM(amount) AS revenue FROM orders JOIN products USING (product_id) GROUP BY id, name ORDER BY revenue DESC LIMIT 10",
   refreshEvery: 60,
 })
 
-const rows = await db.cache('top_products').get()
-await db.cache('top_products').refresh()
-
+const rows = await db.cache("top_products").get()
+await db.cache("top_products").refresh()
 await db.destroy()
 ```
 
 ## Queue API
 
 ```ts
-import { createClient } from '@pgshift/queue'
+import { createClient } from "@pgshift/queue"
 
 const db = createClient({ url: process.env.DATABASE_URL })
 
-await db.queue('emails').setup()
+await db.queue("emails").setup()
 
-const jobId = await db.queue('emails').push(
-  { to: 'user@example.com' },
+const jobId = await db.queue("emails").push(
+  { to: "user@example.com" },
   { priority: 1, retries: 3, delay: 5000 },
 )
 
-await db.queue('emails').process(async (job) => {
+await db.queue("emails").process(async (job) => {
   await sendEmail(job.payload)
 })
 
-await db.queue('emails').cancel(jobId)
-
-const stats = await db.queue('emails').stats()
+await db.queue("emails").cancel(jobId)
+const stats = await db.queue("emails").stats()
 // { pending: 0, processing: 1, done: 10, failed: 0 }
 
 await db.destroy()
 ```
 
-## Key types
+## Cron API
+
+Requires `@pgshift/queue`. Jobs fire as queue entries when the cron expression matches.
 
 ```ts
-interface SearchResult<T> {
-  id: string
-  rank: number
-  data: T
-}
+import { createClient, schedule } from "@pgshift/cron"
+import { createClient as createQueueClient } from "@pgshift/queue"
 
-interface QueueJob<T> {
-  id: string
-  payload: T
-  status: 'processing'
-  attempts: number
-  maxRetries: number
-  priority: number
-  runAt: Date
-  createdAt: Date
-}
+const cron = createClient({ url: process.env.DATABASE_URL, queue: "tasks" })
+const queue = createQueueClient({ url: process.env.DATABASE_URL })
 
-interface QueueStats {
-  pending: number
-  processing: number
-  done: number
-  failed: number
-}
+await cron.cron.setup()
+await queue.queue("tasks").setup()
 
-interface MigrationHint {
-  module: 'search' | 'cache' | 'queue' | 'realtime'
-  currentAdapter: string
-  suggestedAdapter: string
-  reason: string
-  urgency: number
-  learnMoreUrl?: string
-}
+await cron.cron("weekly-digest").schedule(
+  schedule.weekly({ day: "monday", hour: 8 }),
+  { payload: { type: "weekly-digest" } },
+)
+
+await cron.cron("heartbeat").schedule("*/5 * * * *", { payload: { type: "heartbeat" } })
+
+const jobs = await cron.cron.list()
+await cron.cron("weekly-digest").unschedule()
+
+await queue.queue("tasks").process(async (job) => {
+  const { type } = job.payload
+  if (type === "weekly-digest") await sendWeeklyDigest()
+})
 ```
+
+Schedule helpers: schedule.every({ minutes: 5 }), schedule.hourly(), schedule.daily({ hour: 8 }), schedule.weekly({ day: "monday", hour: 9 }), schedule.monthly({ day: 1, hour: 0 }).
+
+## Vector API
+
+```ts
+import { createClient } from "@pgshift/vector"
+
+const db = createClient({ url: process.env.DATABASE_URL })
+
+await db.vector("documents").index({ dimensions: 1536, metric: "cosine" })
+
+await db.vector("documents").upsert("1", {
+  embedding: await embed("Getting started with PgShift"),
+  data: { title: "Getting started", userId: "123" },
+})
+
+const results = await db.vector("documents").query({
+  embedding: await embed("how to install pgshift"),
+  topK: 5,
+  minScore: 0.7,
+})
+
+const filtered = await db.vector("documents").query({
+  embedding: queryEmbedding,
+  topK: 10,
+  filters: { userId: "123" },
+})
+
+await db.vector("documents").delete("1")
+await db.destroy()
+```
+
+## State API
+
+Each method installs an independent trigger. Use only what you need, in any order.
+
+```ts
+import { createClient, normalizers } from "@pgshift/state"
+
+const db = createClient({ url: process.env.DATABASE_URL })
+
+await db.state("loans").define({
+  field: "status",
+  states: ["pending", "approved", "rejected", "paid"],
+  transitions: {
+    pending:  ["approved", "rejected"],
+    approved: ["paid"],
+    rejected: [],
+    paid:     [],
+  },
+  initial: "pending",
+})
+
+await db.state("users").normalize({
+  email: normalizers.email,
+  name:  normalizers.name,
+  phone: normalizers.phone,
+})
+
+await db.state("loans").audit({ track: ["status", "amount"] })
+
+await db.state("loans").consensus({
+  transition: "approved",
+  require: 2,
+  roles: ["finance", "manager"],
+  when: "NEW.amount > 10000000",
+})
+
+await db.state("loans").approve("loan-123", { by: "alice", role: "finance" })
+const history = await db.state("loans").history("loan-123")
+const pending = await db.state("loans").pendingApprovals("loan-123")
+```
+
+Built-in normalizers: normalizers.email, normalizers.name, normalizers.phone, normalizers.trim, normalizers.lowercase, normalizers.uppercase.
+
+## Workflow API
+
+DAG-based workflow orchestration with parallel steps and saga-pattern compensation.
+
+```ts
+import { createClient } from "@pgshift/workflow"
+
+const db = createClient({ url: process.env.DATABASE_URL })
+
+await db.workflow("order-fulfillment").define({
+  steps: {
+    validate_stock:   { handler: "validateStock",   retries: 3 },
+    validate_fraud:   { handler: "validateFraud",   retries: 3 },
+    charge_card:      { handler: "chargeCard",      retries: 1, compensate: "refundCard" },
+    emit_invoice:     { handler: "emitInvoice",     retries: 3, compensate: "voidInvoice" },
+    send_email:       { handler: "sendEmail",       retries: 5 },
+    update_analytics: { handler: "updateAnalytics", retries: 5 },
+  },
+  dag: {
+    validate_stock:   [],
+    validate_fraud:   [],
+    charge_card:      ["validate_stock", "validate_fraud"],
+    emit_invoice:     ["charge_card"],
+    send_email:       ["emit_invoice"],
+    update_analytics: ["emit_invoice"],
+  },
+})
+
+await db.workflow("order-fulfillment").handlers({
+  validateStock:   async (ctx) => { /* ctx.input, ctx.previousSteps, ctx.attempt */ },
+  validateFraud:   async (ctx) => {},
+  chargeCard:      async (ctx) => {},
+  refundCard:      async (ctx) => { /* compensation */ },
+  emitInvoice:     async (ctx) => {},
+  voidInvoice:     async (ctx) => { /* compensation */ },
+  sendEmail:       async (ctx) => {},
+  updateAnalytics: async (ctx) => {},
+})
+
+await db.workflow("order-fulfillment").work()
+
+const runId = await db.workflow("order-fulfillment").run({
+  orderId: "order-123",
+  amount: 299.99,
+})
+
+const status = await db.workflow("order-fulfillment").status(runId)
+// { runId, workflow, status, steps: { validate_stock: { status, attempts, output }, ... } }
+
+process.on("SIGTERM", () => db.destroy())
+```
+
+ctx fields: ctx.runId, ctx.step, ctx.input, ctx.attempt, ctx.previousSteps.
 
 ## Migration hints
 
@@ -146,24 +263,29 @@ const db = createClient({
 })
 ```
 
-Thresholds: search over 200ms over 100 queries suggests Elasticsearch. Cache over 50ms over 100 reads suggests Redis.
+Thresholds: search over 200ms/100 queries suggests Elasticsearch. Cache over 50ms/100 reads suggests Redis. Queue over 5s average lag suggests BullMQ/SQS. Vector over 100ms/100 queries suggests Pinecone/Weaviate.
 
 ## Rules for AI assistants
 
-- Import createClient from the specific module: @pgshift/search, @pgshift/cache, or @pgshift/queue
-- Call index() before search upsert or query
-- Call register() before cache get or refresh
-- Call setup() before queue push or process
+- Import createClient from the specific module: @pgshift/search, @pgshift/cache, @pgshift/queue, @pgshift/cron, @pgshift/vector, @pgshift/state, @pgshift/workflow
+- Call index() before search upsert() or query()
+- Call register() before cache get() or refresh()
+- Call setup() before queue push() or process()
+- Call cron.setup() before scheduling — requires @pgshift/queue also configured
+- Call vector.index() before upsert() or query()
+- Call state.define() before state.consensus()
+- Call workflow.define() and workflow.handlers() before workflow.work() or workflow.run()
 - Call db.destroy() on process exit
 - Make queue handlers idempotent (at-least-once delivery)
+- Make workflow step handlers idempotent (steps may retry)
 - Never import internal adapter packages directly
 
 ## What PgShift does NOT do
 
-- Does not automate migrations to Elasticsearch, Redis, or Kafka
-- Does not cache arbitrary key-value pairs (use Redis for that)
+- Does not automate migrations to Elasticsearch, Redis, Pinecone, or Kafka
+- Does not cache arbitrary key-value pairs with individual TTLs (use Redis for that)
 - Does not replace your ORM — works alongside Prisma or any other ORM
-- Does not guarantee exactly-once queue delivery
+- Does not guarantee exactly-once queue or workflow step delivery
 
 ## Docs
 
@@ -171,4 +293,8 @@ Thresholds: search over 200ms over 100 queries suggests Elasticsearch. Cache ove
 - https://pgshift.dev/modules/search
 - https://pgshift.dev/modules/cache
 - https://pgshift.dev/modules/queue
+- https://pgshift.dev/modules/cron
+- https://pgshift.dev/modules/vector
+- https://pgshift.dev/modules/state
+- https://pgshift.dev/modules/workflow
 - https://pgshift.dev/guides/migration-hints
