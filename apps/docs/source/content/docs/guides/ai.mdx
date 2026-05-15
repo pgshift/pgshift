@@ -3,9 +3,9 @@ title: PgShift + AI
 description: Use AI assistants to build with PgShift faster.
 ---
 
-import { Card, CardGrid } from '@astrojs/starlight/components'
+import { Card, CardGrid } from "@astrojs/starlight/components"
 
-PgShift works well with AI coding assistants. The consistent API and explicit TypeScript types make it straightforward for AI to generate correct code.
+PgShift works well with AI coding assistants. The consistent API and explicit TypeScript types make it straightforward for AI to generate correct code across all modules.
 
 ## llms.txt
 
@@ -25,26 +25,63 @@ Create a `.cursorrules` file at the root of your project:
 You are helping build a Node.js application using PgShift for infrastructure backed by PostgreSQL.
 
 Rules:
-- Import createClient from the specific module: @pgshift/search, @pgshift/cache, or @pgshift/queue
+- Import createClient from the specific module: @pgshift/search, @pgshift/cache, @pgshift/queue, @pgshift/cron, @pgshift/vector, @pgshift/state, or @pgshift/workflow
 - Call db.search(entity).index() before upsert or query
 - Call db.cache(name).register() before get or refresh
 - Call db.queue(name).setup() before push or process
+- Call cron.cron.setup() before scheduling — requires @pgshift/queue also configured
+- Call db.vector(entity).index() before upsert or query
+- Call db.state(table).define() before consensus
+- Call db.workflow(name).define() and .handlers() before .work() or .run()
 - Call db.destroy() on process exit
+- Make queue handlers idempotent (at-least-once delivery)
+- Make workflow step handlers idempotent (steps may retry)
 - Never import internal adapter packages directly
 
 Search pattern:
-  await db.search('entity').index({ fields, weights, fuzzy })
-  await db.search('entity').upsert(id, data)
-  await db.search('entity').query(term, { fuzzy, filters, limit })
+  await db.search("entity").index({ fields, weights, fuzzy })
+  await db.search("entity").upsert(id, data)
+  await db.search("entity").query(term, { fuzzy, filters, limit })
+  await db.search("entity").delete(id)
 
 Cache pattern:
-  await db.cache('name').register({ query, refreshEvery })
-  await db.cache('name').get()
+  await db.cache("name").register({ query, refreshEvery })
+  await db.cache("name").get()
+  await db.cache("name").refresh()
 
 Queue pattern:
-  await db.queue('name').setup()
-  await db.queue('name').push(payload, { priority, retries, delay })
-  await db.queue('name').process(async (job) => { ... })
+  await db.queue("name").setup()
+  await db.queue("name").push(payload, { priority, retries, delay })
+  await db.queue("name").process(async (job) => { ... })
+  await db.queue("name").cancel(jobId)
+  await db.queue("name").stats()
+
+Cron pattern (requires @pgshift/queue):
+  await cron.cron.setup()
+  await cron.cron("job-name").schedule(schedule.daily({ hour: 8 }), { payload })
+  await cron.cron("job-name").unschedule()
+  await cron.cron.list()
+
+Vector pattern:
+  await db.vector("entity").index({ dimensions: 1536, metric: "cosine" })
+  await db.vector("entity").upsert(id, { embedding, data })
+  await db.vector("entity").query({ embedding, topK, minScore, filters })
+  await db.vector("entity").delete(id)
+
+State pattern (each method is independent):
+  await db.state("table").define({ field, states, transitions, initial })
+  await db.state("table").normalize({ email: normalizers.email })
+  await db.state("table").audit({ track: ["status"] })
+  await db.state("table").consensus({ transition, require, roles, when })
+  await db.state("table").approve(entityId, { by, role })
+  await db.state("table").history(entityId)
+
+Workflow pattern:
+  await db.workflow("name").define({ steps, dag })
+  await db.workflow("name").handlers({ handlerName: async (ctx) => { ... } })
+  await db.workflow("name").work()
+  const runId = await db.workflow("name").run(input)
+  const status = await db.workflow("name").status(runId)
 
 Full API reference: https://pgshift.dev/llms.txt
 ```
@@ -56,10 +93,13 @@ Create `.github/copilot-instructions.md`:
 ```md
 This project uses PgShift for infrastructure backed by PostgreSQL.
 
-- Import createClient from @pgshift/search, @pgshift/cache, or @pgshift/queue
-- Always call index(), register(), or setup() before using a module
+- Import createClient from the specific module: @pgshift/search, @pgshift/cache, @pgshift/queue, @pgshift/cron, @pgshift/vector, @pgshift/state, or @pgshift/workflow
+- Always call index(), register(), setup(), or define() before using a module
 - Always call db.destroy() on process exit
 - Make queue handlers idempotent (at-least-once delivery)
+- Make workflow step handlers idempotent (steps may retry on failure)
+- State methods (define, normalize, audit, consensus) are independent — use only what you need
+- Workflow DAG: steps with empty dependency arrays run immediately and in parallel
 ```
 
 ## System prompt for ChatGPT or Claude
@@ -67,12 +107,24 @@ This project uses PgShift for infrastructure backed by PostgreSQL.
 ```md
 I am building a Node.js application using PgShift, an infrastructure toolkit backed by PostgreSQL.
 
+Modules available:
+- @pgshift/search — full-text search via TSVector and pg_trgm
+- @pgshift/cache — query result caching via materialized views
+- @pgshift/queue — background job processing via SKIP LOCKED
+- @pgshift/cron — recurring job scheduling via pg_cron (requires @pgshift/queue)
+- @pgshift/vector — semantic and hybrid search via pgvector
+- @pgshift/state — state machines, normalization, audit logs, consensus gates via triggers
+- @pgshift/workflow — DAG-based workflow orchestration with compensation
+
 Key rules:
-- Import createClient from @pgshift/search, @pgshift/cache, or @pgshift/queue
+- Import createClient from the specific module, never from @pgshift/core or internal adapters
 - Call index() before search upsert or query
 - Call register() before cache get or refresh
 - Call setup() before queue push or process
+- Call vector.index() before vector upsert or query
+- Call workflow.define() and .handlers() before .work() or .run()
 - Call db.destroy() on process exit
+- Make queue and workflow handlers idempotent
 
 Full API: https://pgshift.dev/llms.txt
 ```
