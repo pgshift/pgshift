@@ -3,6 +3,7 @@
   "version": "0.1.0",
   "description": "PgShift cache — materialized view caching powered by PostgreSQL.",
   "type": "module",
+  "license": "MIT",
   "homepage": "https://pgshift-docs.vercel.app/",
   "repository": {
     "type": "git",
