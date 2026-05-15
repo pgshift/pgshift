@@ -76,10 +76,12 @@ export function createClient(
   }) as PgShiftClient & { vector: (entity: string) => VectorHandle }
 
   client.vector = (entity: string): VectorHandle => {
-    if (!handles.has(entity)) {
-      handles.set(entity, new VectorHandle(entity, adapter))
+    let handle = handles.get(entity)
+    if (!handle) {
+      handle = new VectorHandle(entity, adapter)
+      handles.set(entity, handle)
     }
-    return handles.get(entity)!
+    return handle
   }
 
   // Patch destroy to also teardown the vector adapter

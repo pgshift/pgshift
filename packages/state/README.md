@@ -6,7 +6,7 @@
 <div align="left">
 
 [![npm version](https://img.shields.io/npm/v/@pgshift/state)](https://www.npmjs.com/package/@pgshift/state)
-[![license](https://img.shields.io/npm/l/@pgshift/state)](https://github.com/mkafonso/pgshift)
+[![license](https://img.shields.io/npm/l/@pgshift/state)](https://github.com/pgshift/pgshift)
 [![downloads](https://img.shields.io/npm/dm/@pgshift/state)](https://www.npmjs.com/package/@pgshift/state)
 
 </div>

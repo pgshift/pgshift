@@ -8,7 +8,7 @@ Contributions are welcome. Please open an issue before submitting a pull request
 ## Setup
 
 ```bash
-git clone https://github.com/mkafonso/pgshift
+git clone https://github.com/pgshift/pgshift
 cd pgshift
 npm install
 npm run build

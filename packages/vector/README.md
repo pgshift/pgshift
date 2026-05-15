@@ -6,7 +6,7 @@
 <div align="left">
 
 [![npm version](https://img.shields.io/npm/v/@pgshift/vector)](https://www.npmjs.com/package/@pgshift/vector)
-[![license](https://img.shields.io/npm/l/@pgshift/vector)](https://github.com/mkafonso/pgshift)
+[![license](https://img.shields.io/npm/l/@pgshift/vector)](https://github.com/pgshift/pgshift)
 [![downloads](https://img.shields.io/npm/dm/@pgshift/vector)](https://www.npmjs.com/package/@pgshift/vector)
 
 </div>

@@ -106,9 +106,8 @@ async function claimJob<T>(
       FOR UPDATE SKIP LOCKED
     `)
 
-    if (result.rows.length === 0) return []
-
-    const job = result.rows[0]!
+    const job = result.rows[0]
+    if (!job) return []
 
     await client.query(
       `UPDATE ${table}
@@ -120,9 +119,8 @@ async function claimJob<T>(
     return result.rows
   })
 
-  if (rows.length === 0) return null
-
-  const row = rows[0]!
+  const row = rows[0]
+  if (!row) return null
   return {
     id: row.id,
     name: queue,

@@ -12,4 +12,4 @@ npm install @pgshift/vector
 ---
 
 For documentation, examples, and API reference, see the main package:
-**[github.com/mkafonso/pgshift](https://github.com/mkafonso/pgshift)**
+**[github.com/pgshift/pgshift](https://github.com/pgshift/pgshift)**

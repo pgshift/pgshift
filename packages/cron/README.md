@@ -6,7 +6,7 @@
 <div align="left">
 
 [![npm version](https://img.shields.io/npm/v/@pgshift/cron)](https://www.npmjs.com/package/@pgshift/cron)
-[![license](https://img.shields.io/npm/l/@pgshift/cron)](https://github.com/mkafonso/pgshift)
+[![license](https://img.shields.io/npm/l/@pgshift/cron)](https://github.com/pgshift/pgshift)
 [![downloads](https://img.shields.io/npm/dm/@pgshift/cron)](https://www.npmjs.com/package/@pgshift/cron)
 
 </div>

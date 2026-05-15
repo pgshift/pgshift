@@ -6,7 +6,7 @@
 <div align="left">
 
 [![npm version](https://img.shields.io/npm/v/@pgshift/workflow)](https://www.npmjs.com/package/@pgshift/workflow)
-[![license](https://img.shields.io/npm/l/@pgshift/workflow)](https://github.com/mkafonso/pgshift)
+[![license](https://img.shields.io/npm/l/@pgshift/workflow)](https://github.com/pgshift/pgshift)
 [![downloads](https://img.shields.io/npm/dm/@pgshift/workflow)](https://www.npmjs.com/package/@pgshift/workflow)
 
 </div>

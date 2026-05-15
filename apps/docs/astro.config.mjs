@@ -18,13 +18,13 @@ export default defineConfig({
         src: './public/logo.svg',
       },
       editLink: {
-        baseUrl: 'https://github.com/mkafonso/pgshift/edit/main/apps/docs/',
+        baseUrl: 'https://github.com/pgshift/pgshift/edit/main/apps/docs/',
       },
       social: [
         {
           icon: 'github',
           label: 'GitHub',
-          href: 'https://github.com/mkafonso/pgshift',
+          href: 'https://github.com/pgshift/pgshift',
         },
       ],
       sidebar: [
