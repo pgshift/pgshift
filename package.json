@@ -2,12 +2,14 @@
   "name": "pgshift",
   "private": true,
   "scripts": {
-   "build": "turbo run build",
+    "build": "turbo run build",
     "dev": "turbo run dev",
+    "release": "turbo build && changeset publish",
     "format": "turbo run format",
     "lint": "turbo run lint"
   },
   "devDependencies": {
+    "@changesets/cli": "2.31.0",
     "turbo": "2.9.14",
     "typescript": "6.0.3"
   },
