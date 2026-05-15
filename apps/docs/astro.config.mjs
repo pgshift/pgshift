@@ -39,6 +39,7 @@ export default defineConfig({
             { label: 'Search', slug: 'modules/search' },
             { label: 'State and Consensus', slug: 'modules/state' },
             { label: 'Vector', slug: 'modules/vector' },
+            { label: 'Workflow', slug: 'modules/workflow' },
             { label: 'Queue', slug: 'modules/queue' },
             { label: 'Cache', slug: 'modules/cache' },
             { label: 'Cron', slug: 'modules/cron' },
@@ -58,6 +59,10 @@ export default defineConfig({
             {
               label: 'Vector Adapter',
               slug: 'adapters/vector-postgres',
+            },
+            {
+              label: 'Workflow Adapter',
+              slug: 'adapters/workflow-postgres',
             },
             {
               label: 'Queue Adapter',

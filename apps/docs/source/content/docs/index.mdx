@@ -141,6 +141,55 @@ PostgreSQL already handles full-text search, job queues, pub/sub messaging, quer
     ```
   </TabItem>
 
+  <TabItem label="Workflow">
+    ```bash
+    npm install @pgshift/workflow
+    ```
+
+    ```ts
+    import { createClient } from '@pgshift/workflow'
+
+    const db = createClient({ url: process.env.DATABASE_URL })
+
+    await db.workflow('order-fulfillment').define({
+      steps: {
+        validate_stock:   { handler: 'validateStock',   retries: 3 },
+        validate_fraud:   { handler: 'validateFraud',   retries: 3 },
+        charge_card:      { handler: 'chargeCard',      retries: 1, compensate: 'refundCard' },
+        emit_invoice:     { handler: 'emitInvoice',     retries: 3, compensate: 'voidInvoice' },
+        send_email:       { handler: 'sendEmail',       retries: 5 },
+        update_analytics: { handler: 'updateAnalytics', retries: 5 },
+      },
+      dag: {
+        validate_stock:   [],
+        validate_fraud:   [],
+        charge_card:      ['validate_stock', 'validate_fraud'],
+        emit_invoice:     ['charge_card'],
+        send_email:       ['emit_invoice'],
+        update_analytics: ['emit_invoice'],
+      },
+    })
+
+    await db.workflow('order-fulfillment').handlers({
+      validateStock:   async (ctx) => { /* validate */ },
+      validateFraud:   async (ctx) => { /* check fraud */ },
+      chargeCard:      async (ctx) => { /* charge */ },
+      refundCard:      async (ctx) => { /* compensation */ },
+      emitInvoice:     async (ctx) => { /* invoice */ },
+      voidInvoice:     async (ctx) => { /* compensation */ },
+      sendEmail:       async (ctx) => { /* notify */ },
+      updateAnalytics: async (ctx) => { /* record */ },
+    })
+
+    await db.workflow('order-fulfillment').work()
+
+    const runId = await db.workflow('order-fulfillment').run({
+      orderId: 'order-123',
+      amount: 299.99,
+    })
+    ```
+  </TabItem>
+
   <TabItem label="Queue">
     ```bash
     npm install @pgshift/queue

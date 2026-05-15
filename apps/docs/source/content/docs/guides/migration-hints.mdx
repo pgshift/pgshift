@@ -38,6 +38,7 @@ Each hint fires only once per process lifetime to avoid log noise.
 | `cache` | Average read latency | Over 50ms across 100 reads | Redis |
 | `queue` | Average job processing lag | Over 5s average wait time | BullMQ with Redis, SQS |
 | `vector` | Average query latency | Over 100ms across 100 queries | Pinecone, Weaviate |
+| `workflow` | Average step execution latency | Over 2s average step time across 50 runs | Temporal, AWS Step Functions |
 
 Thresholds are conservative by design. A single slow query will not trigger a hint. The threshold must be consistently exceeded before PgShift considers it a signal worth surfacing.
 
@@ -49,7 +50,7 @@ A hint at urgency 0.3 means you are approaching the threshold. A hint at urgency
 
 ```ts
 interface MigrationHint {
-  module: 'search' | 'cache' | 'queue' | 'vector' | 'realtime'
+  module: 'search' | 'cache' | 'queue' | 'vector' | 'workflow' | 'realtime'
   currentAdapter: string
   suggestedAdapter: string
   reason: string
@@ -69,6 +70,8 @@ PgShift does not automate infrastructure migrations. When a hint fires, the plan
 **Queue to BullMQ or SQS**: provision Redis or an SQS queue, migrate existing pending jobs, and update your worker configuration.
 
 **Vector to Pinecone or Weaviate**: provision the vector database, re-embed and reindex your data, and update your upsert pipeline.
+
+**Workflow to Temporal or AWS Step Functions**: provision the orchestration backend, migrate existing workflow definitions and in-flight runs, and update your worker configuration to target the new runtime.
 
 In every case, your application-level API stays exactly the same. The migration is infrastructure work, not application code.
 

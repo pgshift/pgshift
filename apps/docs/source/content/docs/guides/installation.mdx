@@ -16,6 +16,7 @@ PgShift is organized as independent modules. Install only what you need.
 | `@pgshift/queue` | Background job processing via SKIP LOCKED |
 | `@pgshift/vector` | Semantic and hybrid search via pgvector and HNSW indexes |
 | `@pgshift/cron` | Recurring job scheduling via pg_cron (requires `@pgshift/queue`) |
+| `@pgshift/workflow` | DAG-based workflow orchestration with retries and saga compensation |
 
 ## Install
 
@@ -27,6 +28,7 @@ PgShift is organized as independent modules. Install only what you need.
     npm install @pgshift/queue
     npm install @pgshift/vector
     npm install @pgshift/cron @pgshift/queue
+    npm install @pgshift/workflow
     ```
   </TabItem>
   <TabItem label="pnpm">
@@ -36,6 +38,7 @@ PgShift is organized as independent modules. Install only what you need.
     pnpm add @pgshift/queue
     pnpm add @pgshift/vector
     pnpm add @pgshift/cron @pgshift/queue
+    pnpm add @pgshift/workflow
     ```
   </TabItem>
   <TabItem label="yarn">
@@ -45,6 +48,7 @@ PgShift is organized as independent modules. Install only what you need.
     yarn add @pgshift/queue
     yarn add @pgshift/vector
     yarn add @pgshift/cron @pgshift/queue
+    yarn add @pgshift/workflow
     ```
   </TabItem>
 </Tabs>
