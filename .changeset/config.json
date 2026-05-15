@@ -27,6 +27,8 @@
     "@pgshift/example-workflow-basic",
     "@pgshift/example-workflow-ecommerce",
     "@pgshift/__tests__",
+    "@pgshift/lint",
+    "@pgshift/ts",
     "@pgshift/docs"
   ]
 }
