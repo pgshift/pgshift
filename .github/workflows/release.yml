@@ -1,51 +1,51 @@
-# name: Release
+name: Release
 
-# on:
-#   push:
-#     branches: [main]
+on:
+  push:
+    branches: [main]
 
-# concurrency:
-#   group: ${{ github.workflow }}-${{ github.ref }}
-#   cancel-in-progress: true
+concurrency:
+  group: ${{ github.workflow }}-${{ github.ref }}
+  cancel-in-progress: true
 
-# jobs:
-#   release:
-#     name: Release
-#     runs-on: ubuntu-latest
+jobs:
+  release:
+    name: Release
+    runs-on: ubuntu-latest
 
-#     permissions:
-#       contents: write
-#       pull-requests: write
-#       id-token: write
+    permissions:
+      contents: write
+      pull-requests: write
+      id-token: write
 
-#     steps:
-#       - uses: actions/checkout@v4
-#         with:
-#           # Full history required for Changesets to detect changes
-#           fetch-depth: 0
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          # Full history required for Changesets to detect changes
+          fetch-depth: 0
 
-#       - uses: actions/setup-node@v4
-#         with:
-#           node-version: 20
-#           cache: npm
-#           registry-url: https://registry.npmjs.org
+      - uses: actions/setup-node@v4
+        with:
+          node-version: 20
+          cache: npm
+          registry-url: https://registry.npmjs.org
 
-#       - run: npm ci
+      - run: npm ci
 
-#       - name: Build all packages
-#         run: npx turbo build
+      - name: Build all packages
+        run: npx turbo build
 
-#       # Changesets action:
-#       # - If there are pending changesets → opens a "Version Packages" PR
-#       #   with bumped versions and updated CHANGELOGs
-#       # - If the "Version Packages" PR is merged → publishes to npm
-#       - name: Create release PR or publish to npm
-#         uses: changesets/action@v1
-#         with:
-#           publish: npm run release
-#           title: "chore: version packages"
-#           commit: "chore: version packages"
-#         env:
-#           GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
-#           NODE_AUTH_TOKEN: ${{ secrets.NPM_TOKEN }}
-#           NPM_CONFIG_PROVENANCE: true
+      # Changesets action:
+      # - If there are pending changesets → opens a "Version Packages" PR
+      #   with bumped versions and updated CHANGELOGs
+      # - If the "Version Packages" PR is merged → publishes to npm
+      - name: Create release PR or publish to npm
+        uses: changesets/action@v1
+        with:
+          publish: npm run release
+          title: "chore: version packages"
+          commit: "chore: version packages"
+        env:
+          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+          NODE_AUTH_TOKEN: ${{ secrets.NPM_TOKEN }}
+          NPM_CONFIG_PROVENANCE: true
