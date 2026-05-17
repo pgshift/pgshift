@@ -13,6 +13,6 @@
   },
   "devDependencies": {
     "@pgshift/lint": "*",
-    "tsx": "4.22.0"
+    "tsx": "4.22.1"
   }
 }
