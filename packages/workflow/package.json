@@ -1,6 +1,6 @@
 {
   "name": "@pgshift/workflow",
-  "version": "0.1.0",
+  "version": "1.0.0",
   "description": "PgShift workflow — DAG-based workflow orchestration with compensation via PostgreSQL.",
   "type": "module",
   "license": "MIT",
