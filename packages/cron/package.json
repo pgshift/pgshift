@@ -1,6 +1,6 @@
 {
   "name": "@pgshift/cron",
-  "version": "0.1.0",
+  "version": "1.0.0",
   "description": "PgShift cron — scheduled jobs via pg_cron, delivered through @pgshift/queue.",
   "type": "module",
   "license": "MIT",
