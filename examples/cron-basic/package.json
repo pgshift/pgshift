@@ -15,6 +15,6 @@
   "devDependencies": {
     "@pgshift/lint": "*",
     "@pgshift/ts": "*",
-    "tsx": "4.22.1"
+    "tsx": "4.22.2"
   }
 }
