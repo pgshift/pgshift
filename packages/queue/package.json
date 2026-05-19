@@ -1,6 +1,6 @@
 {
   "name": "@pgshift/queue",
-  "version": "0.1.0",
+  "version": "1.0.0",
   "description": "PgShift queue — asynchronous job processing powered by PostgreSQL.",
   "type": "module",
   "license": "MIT",
