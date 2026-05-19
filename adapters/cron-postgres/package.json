@@ -4,6 +4,11 @@
   "version": "0.0.0",
   "type": "module",
   "license": "MIT",
+  "homepage": "https://pgshift.dev/",
+  "repository": {
+    "type": "git",
+    "url": "git+https://github.com/pgshift/pgshift.git"
+  },
   "main": "./dist/index.mjs",
   "types": "./dist/index.d.mts",
   "exports": {
